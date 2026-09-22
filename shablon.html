@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+
+<html lang="uz"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ec5b13",
+                        "brand-blue": "#00008b",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221610",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }</script>
+<title>Sozlamalar - IQMath Pro</title>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
+<div class="relative flex min-h-screen w-full flex-col max-w-md mx-auto bg-background-light dark:bg-background-dark pb-24">
+<!-- Header -->
+<header class="sticky top-0 z-10 flex items-center bg-background-light dark:bg-background-dark p-4 gap-4 border-b border-slate-200 dark:border-slate-800">
+<button class="flex items-center justify-center p-2 rounded-full hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100">arrow_back</span>
+</button>
+<h1 class="text-xl font-bold tracking-tight">Sozlamalar</h1>
+</header>
+<main class="flex-1 overflow-y-auto">
+<!-- Section 1: Profil -->
+<section class="mt-4">
+<h2 class="px-6 py-2 text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Profil</h2>
+<div class="mx-4 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+<a class="flex items-center gap-4 px-4 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<div class="flex items-center justify-center w-10 h-10 rounded-xl text-brand-blue bg-blue-50 dark:bg-blue-900/20">
+<span class="material-symbols-outlined">person</span>
+</div>
+<span class="flex-1 font-medium">Profil ma'lumotlari</span>
+<span class="material-symbols-outlined text-slate-400">chevron_right</span>
+</a>
+<div class="h-px bg-slate-100 dark:bg-slate-800 mx-4"></div>
+<a class="flex items-center gap-4 px-4 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<div class="flex items-center justify-center w-10 h-10 rounded-xl text-brand-blue bg-blue-50 dark:bg-blue-900/20">
+<span class="material-symbols-outlined">book</span>
+</div>
+<span class="flex-1 font-medium">Kurslarim</span>
+<span class="material-symbols-outlined text-slate-400">chevron_right</span>
+</a>
+<div class="h-px bg-slate-100 dark:bg-slate-800 mx-4"></div>
+<a class="flex items-center gap-4 px-4 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<div class="flex items-center justify-center w-10 h-10 rounded-xl text-brand-blue bg-blue-50 dark:bg-blue-900/20">
+<span class="material-symbols-outlined">military_tech</span>
+</div>
+<span class="flex-1 font-medium">Sertifikatlarim</span>
+<span class="material-symbols-outlined text-slate-400">chevron_right</span>
+</a>
+<div class="h-px bg-slate-100 dark:bg-slate-800 mx-4"></div>
+<a class="flex items-center gap-4 px-4 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<div class="flex items-center justify-center w-10 h-10 rounded-xl text-brand-blue bg-blue-50 dark:bg-blue-900/20">
+<span class="material-symbols-outlined">bar_chart</span>
+</div>
+<span class="flex-1 font-medium">Faollik</span>
+<span class="material-symbols-outlined text-slate-400">chevron_right</span>
+</a>
+</div>
+</section>
+<!-- Section 2: Sozlamalar -->
+<section class="mt-6">
+<h2 class="px-6 py-2 text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Sozlamalar</h2>
+<div class="mx-4 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+<a class="flex items-center gap-4 px-4 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<div class="flex items-center justify-center w-10 h-10 rounded-xl text-brand-blue bg-blue-50 dark:bg-blue-900/20">
+<span class="material-symbols-outlined">language</span>
+</div>
+<div class="flex-1 flex items-center justify-between">
+<span class="font-medium">Ilova tili</span>
+<span class="text-sm text-slate-500">O'zbekcha</span>
+</div>
+<span class="material-symbols-outlined text-slate-400">chevron_right</span>
+</a>
+<div class="h-px bg-slate-100 dark:bg-slate-800 mx-4"></div>
+<div class="flex items-center gap-4 px-4 py-4">
+<div class="flex items-center justify-center w-10 h-10 rounded-xl text-brand-blue bg-blue-50 dark:bg-blue-900/20">
+<span class="material-symbols-outlined">dark_mode</span>
+</div>
+<span class="flex-1 font-medium">Qorong'i rejim</span>
+<div class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</div>
+</div>
+<div class="h-px bg-slate-100 dark:bg-slate-800 mx-4"></div>
+<div class="flex items-center gap-4 px-4 py-4">
+<div class="flex items-center justify-center w-10 h-10 rounded-xl text-brand-blue bg-blue-50 dark:bg-blue-900/20">
+<span class="material-symbols-outlined">vibration</span>
+</div>
+<span class="flex-1 font-medium">Tebranishlar</span>
+<div class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 3: Aloqa va yordam -->
+<section class="mt-6">
+<h2 class="px-6 py-2 text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Aloqa va yordam</h2>
+<div class="mx-4 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+<a class="flex items-center gap-4 px-4 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<div class="flex items-center justify-center w-10 h-10 rounded-xl text-brand-blue bg-blue-50 dark:bg-blue-900/20">
+<span class="material-symbols-outlined">support_agent</span>
+</div>
+<span class="flex-1 font-medium">Yordam va qo'llab-quvvatlash</span>
+<span class="material-symbols-outlined text-slate-400">chevron_right</span>
+</a>
+<div class="h-px bg-slate-100 dark:bg-slate-800 mx-4"></div>
+<a class="flex items-center gap-4 px-4 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" href="#">
+<div class="flex items-center justify-center w-10 h-10 rounded-xl text-brand-blue bg-blue-50 dark:bg-blue-900/20">
+<span class="material-symbols-outlined">group_add</span>
+</div>
+<span class="flex-1 font-medium">Do'stlarni taklif qiling</span>
+<span class="material-symbols-outlined text-slate-400">chevron_right</span>
+</a>
+</div>
+</section>
+<!-- Logout Button -->
+<button class="mt-8 mx-4 w-auto mb-10 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/10 text-red-600 font-semibold border border-red-100 dark:border-red-900/20">
+<span class="material-symbols-outlined">logout</span>
+                Chiqish
+            </button>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex justify-around items-center px-4 pt-2 pb-6 z-20">
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Asosiy</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+<span class="text-[10px] font-medium">Kurslar</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-symbols-outlined">emoji_events</span>
+<span class="text-[10px] font-medium">Reyting</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-brand-blue" href="#">
+<span class="material-symbols-outlined fill-1">person</span>
+<span class="text-[10px] font-medium">Profil</span>
+</a>
+</nav>
+</div>
+</body></html>
