@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 class BattleColors {
   static const Color primary = Color(0xFF6366F1); // indigo-500
   static const Color primaryDark = Color(0xFF4F46E5);
+
+  // "Yana o'ynash" / faol tugmalar uchun umumiy ko'k gradient
+  static const List<Color> actionGradient = [Color(0xFF60A5FA), Color(0xFF2563EB)];
   static const Color purple = Color(0xFFA855F7);
   static const Color rose = Color(0xFFF43F5E);
   static const Color win = Color(0xFFF59E0B); // amber

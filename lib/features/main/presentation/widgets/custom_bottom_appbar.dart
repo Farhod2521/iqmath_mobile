@@ -1,15 +1,21 @@
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:my_flutter_template/core/extension/extensions.dart';
 import 'package:my_flutter_template/core/theme/colors/app_colors.dart';
 import 'package:my_flutter_template/features/main/presentation/bloc/main_bloc.dart';
 import 'package:my_flutter_template/features/main/presentation/pages/main_page.dart';
+import 'package:my_flutter_template/router/app_routes.dart';
+import 'package:my_flutter_template/router/name_routes.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io' show Platform;
 import '../../../../generated/l10n.dart';
 import '../../../../injector_container.dart';
+
+const String _navImgHome = 'assets/images/navbar1.png';
+const String _navImgCourses = 'assets/images/navbar2.png';
+const String _navImgDiagnostics = 'assets/images/navbar3.png';
+const String _navImgBattle = 'assets/images/navbar4.png';
 
 class CustomBottomAppBar extends StatefulWidget {
   final List<Destination> destinations;
@@ -31,7 +37,7 @@ class _CustomBottomAppBarState extends State<CustomBottomAppBar> {
   @override
   Widget build(BuildContext context) {
     final localization = AppLocalization.of(context);
-    double bottomAppBarHeight = 68.0.width;
+    double bottomAppBarHeight = 82.0.width;
 
     // MediaQuery orqali viewInsets va padding ni olamiz
     final viewInsets = MediaQuery.of(context).viewInsets.bottom;
@@ -55,7 +61,7 @@ class _CustomBottomAppBarState extends State<CustomBottomAppBar> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   BottomAppItem(
-                    svgAsset: widget.destinations.first.icon,
+                    imageAsset: _navImgHome,
                     title: widget.destinations.first.title,
                     isSelected: state.currentPage.isHome,
                     itemIndex: 0,
@@ -77,7 +83,7 @@ class _CustomBottomAppBarState extends State<CustomBottomAppBar> {
                     },
                   ),
                   BottomAppItem(
-                    svgAsset: widget.destinations[1].icon,
+                    imageAsset: _navImgCourses,
                     title: widget.destinations[1].title,
                     isSelected: state.currentPage.isSubject,
                     itemIndex: 1,
@@ -94,7 +100,7 @@ class _CustomBottomAppBarState extends State<CustomBottomAppBar> {
                     },
                   ),
                   BottomAppItem(
-                    svgAsset: widget.destinations[2].icon,
+                    imageAsset: _navImgDiagnostics,
                     title: widget.destinations[2].title,
                     isSelected: state.currentPage.isDiagnostics,
                     itemIndex: 2,
@@ -111,21 +117,14 @@ class _CustomBottomAppBarState extends State<CustomBottomAppBar> {
                     },
                   ),
                   BottomAppItem(
-                    svgAsset: widget.destinations[3].icon,
+                    imageAsset: _navImgBattle,
                     title: widget.destinations[3].title,
-                    isSelected: state.currentPage.isProducts,
+                    isSelected: false,
                     itemIndex: 3,
                     onTap: () {
-                      if (state.currentPage.isProducts) {
-                        widget.destinationKeys[3].currentState
-                            ?.popUntil((route) => route.isFirst);
-                      }
-                      widget.destinationKeys[3].currentState
-                          ?.popUntil((route) => route.isFirst);
-                      context.read<MainBloc>().add(
-                        const MainPageChangeEvent(
-                          MainPages.products,
-                        ),
+                      Navigator.pushNamed(
+                        mainRootNavigatorKey.currentContext!,
+                        Routes.battle,
                       );
                     },
                   ),
@@ -147,8 +146,7 @@ class BottomAppItem extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
-  final String? svgAsset;
-  final IconData? iconData;
+  final String imageAsset;
   final double iconSize;
   final int itemIndex;
 
@@ -158,18 +156,15 @@ class BottomAppItem extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     required this.itemIndex,
+    required this.imageAsset,
     this.onLongPress,
-    this.svgAsset,
-    this.iconData,
     this.iconSize = 32,
-  }) : assert(svgAsset != null || iconData != null, 'Icon is required');
+  });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final Color selectedColor = context.color.primaryColor1;
-    final Color unselectedColor =
-        theme.iconTheme.color?.withOpacity(0.5) ?? Colors.grey;
+    const Color unselectedTextColor = Color(0xFF8A8A8E);
 
     return Expanded(
       child: Semantics(
@@ -185,47 +180,40 @@ class BottomAppItem extends StatelessWidget {
             HapticFeedback.vibrate();
             onLongPress?.call();
           },
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Center(
-              child: AnimatedCrossFade(
-                duration: const Duration(milliseconds: 250),
-                crossFadeState: isSelected
-                    ? CrossFadeState.showFirst
-                    : CrossFadeState.showSecond,
-                firstChild: svgAsset != null
-                    ? SvgPicture.asset(
-                  svgAsset!,
-                  height: iconSize,
-                  width: iconSize,
-                  colorFilter: ColorFilter.mode(
-                    selectedColor,
-                    BlendMode.srcIn,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? selectedColor.withOpacity(0.12)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    imageAsset,
+                    height: iconSize,
+                    width: iconSize,
                   ),
-                )
-                    : Icon(
-                  iconData,
-                  size: iconSize,
-                  color: selectedColor,
-                ),
-                secondChild: svgAsset != null
-                    ? SvgPicture.asset(
-                  svgAsset!,
-                  height: iconSize,
-                  width: iconSize,
-                  colorFilter: ColorFilter.mode(
-                    unselectedColor,
-                    BlendMode.srcIn,
+                  const SizedBox(height: 3),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? selectedColor : unselectedTextColor,
+                    ),
                   ),
-                )
-                    : Icon(
-                  iconData,
-                  size: iconSize,
-                  color: unselectedColor,
-                ),
+                ],
               ),
             ),
           ),

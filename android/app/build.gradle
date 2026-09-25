@@ -48,7 +48,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "test.iqmath.mobile"
+        applicationId = "com.iqmath.app"
         minSdk = 24
         targetSdk = 36
         versionCode = flutterVersionCode.toInteger()

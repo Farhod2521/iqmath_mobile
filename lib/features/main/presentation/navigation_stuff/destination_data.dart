@@ -24,14 +24,14 @@ List<Destination> allDestinations(AppLocalization localization) =>
       Destination(
         index: 0,
         // title: localization.home,
-        title: 'Asosiy',
+        title: 'Bosh sahifa',
         icon: Assets.svgHomeBottom,
         selectedIcon: Assets.pngHomeRounded,
         initialRoute: Routes.home,
       ),
       Destination(
         index: 1,
-        title: 'Fanlar',
+        title: 'Kurslar',
         icon: Assets.svgBookBottom,
         selectedIcon: Assets.pngSearchRounded,
         initialRoute: Routes.subject,
@@ -45,7 +45,7 @@ List<Destination> allDestinations(AppLocalization localization) =>
       ),
       Destination(
         index: 3,
-        title: 'Tavsiya',
+        title: 'Battle',
         icon: Assets.svgSuggestion,
         selectedIcon: Assets.pngUser,
         initialRoute: Routes.suggestions,

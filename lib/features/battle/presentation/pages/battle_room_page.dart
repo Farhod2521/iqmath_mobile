@@ -14,6 +14,9 @@ import 'package:my_flutter_template/features/battle/presentation/widgets/battle_
 import 'package:my_flutter_template/injector_container.dart';
 import 'package:my_flutter_template/router/name_routes.dart';
 
+const String _kWinBg = 'assets/images/win_battle.png';
+const String _kLoseBg = 'assets/images/lose_battle.png';
+
 class BattleRoomPage extends StatelessWidget {
   final BattleRoomPageArgs args;
 
@@ -329,26 +332,48 @@ class _BattleRoomViewState extends State<_BattleRoomView> {
           else if (data.questionType == 'text' ||
               data.questionType == 'composite' ||
               data.isMultiSelect)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _canSubmit(state, data)
-                    ? () => bloc.add(const SubmitAnswerEvent())
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: BattleColors.primary,
-                  disabledBackgroundColor: const Color(0xFFE7EEFB),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                child: Text(
-                  locale == 'ru' ? 'Отправить ответ' : 'Javobni yuborish',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
+            _canSubmit(state, data)
+                ? Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => bloc.add(const SubmitAnswerEvent()),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Ink(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: BattleColors.actionGradient,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Center(
+                          child: Text(
+                            locale == 'ru' ? 'Отправить ответ' : 'Javobni yuborish',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE7EEFB),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Center(
+                      child: Text(
+                        locale == 'ru' ? 'Отправить ответ' : 'Javobni yuborish',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, color: BattleColors.muted),
+                      ),
+                    ),
+                  ),
         ],
       ),
     );
@@ -655,81 +680,286 @@ class _BattleRoomViewState extends State<_BattleRoomView> {
 
     final isWin = me?.result == 'win';
     final isDraw = me?.result == 'draw';
-    final resultColor =
-        isWin ? BattleColors.win : (isDraw ? BattleColors.draw : BattleColors.loss);
-    final resultIcon = isWin
-        ? Icons.emoji_events_rounded
-        : (isDraw ? Icons.handshake_rounded : Icons.sentiment_dissatisfied_rounded);
+    final isLoss = me != null && !isWin && !isDraw;
+    final bgImage = isLoss ? _kLoseBg : _kWinBg;
 
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    final title = me == null
+        ? ''
+        : isWin
+            ? (locale == 'ru' ? 'Победа!' : "G'alaba!")
+            : isDraw
+                ? (locale == 'ru' ? 'Ничья' : 'Durrang')
+                : (locale == 'ru' ? 'Поражение' : "Mag'lubiyat");
+
+    final subtitle = isWin
+        ? (locale == 'ru'
+            ? 'Отличный результат! Продолжайте!'
+            : 'Ajoyib natija! Davom eting!')
+        : isDraw
+            ? (locale == 'ru'
+                ? 'Близкая игра! Попробуйте ещё раз!'
+                : "Yaqin o'yin edi! Yana urinib ko'ring!")
+            : (locale == 'ru'
+                ? 'Будьте настойчивы, продолжайте!'
+                : "Qat'iyatli bo'lib, davom et!");
+
+    final tip = isWin
+        ? (locale == 'ru'
+            ? 'Отличная работа! Каждая игра приближает вас к новым знаниям!'
+            : "Zo'r ishladingiz! Har bir o'yin sizni yangi bilim sari yaqinlashtiradi!")
+        : isDraw
+            ? (locale == 'ru'
+                ? 'Ничья — тоже опыт! Попробуйте снова.'
+                : "Durrang ham tajriba! Yana urinib ko'ring.")
+            : (locale == 'ru'
+                ? 'Каждое поражение — шаг к новым знаниям!'
+                : "Har bir mag'lubiyat — bu yangi bilim sari qadam!");
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Image.asset(bgImage, fit: BoxFit.cover),
+        ),
+        Column(
           children: [
-            Container(
-              width: 96,
-              height: 96,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: resultColor.withOpacity(0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(resultIcon, size: 46, color: resultColor),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              me == null
-                  ? ''
-                  : isWin
-                      ? (locale == 'ru' ? 'Победа!' : "G'alaba!")
-                      : isDraw
-                          ? (locale == 'ru' ? 'Ничья' : 'Durrang')
-                          : (locale == 'ru' ? 'Поражение' : 'Mag\'lubiyat'),
-              style: TextStyle(
-                  fontSize: 24, fontWeight: FontWeight.w900, color: resultColor),
-            ),
-            const SizedBox(height: 6),
-            if (me != null)
-              Text(
-                '${locale == 'ru' ? 'Счёт' : 'Hisob'}: ${me.score} — ${opponent?.score ?? 0}',
-                style: const TextStyle(fontSize: 13, color: BattleColors.muted),
-              ),
-            const SizedBox(height: 20),
-            if (me != null) _eloResultCard(me, locale),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(context)
-                    .pushNamedAndRemoveUntil(Routes.battle, (r) => false),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: BattleColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                child: Text(locale == 'ru' ? 'Играть снова' : 'Yana o\'ynash',
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Row(
+                children: [_resultCloseButton(context)],
               ),
             ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
-                    Routes.battleLeaderboard, (r) => r.settings.name == Routes.battle),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: BattleColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                child: Text(locale == 'ru' ? 'Рейтинг' : 'Reytingga o\'tish',
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              color: BattleColors.ink,
+                            ),
+                          ),
+                          if (me != null) ...[
+                            const SizedBox(height: 14),
+                            _scorePill(me, opponent, locale),
+                          ],
+                          const SizedBox(height: 10),
+                          Text(
+                            subtitle,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: BattleColors.muted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (me != null) ...[
+                            const SizedBox(height: 14),
+                            _eloResultCard(me, locale),
+                          ],
+                          const SizedBox(height: 26),
+                          _resultPrimaryButton(
+                            icon: Icons.refresh_rounded,
+                            label: locale == 'ru' ? 'Играть снова' : "Yana o'ynash",
+                            onTap: () => Navigator.of(context).pushNamedAndRemoveUntil(
+                                Routes.battle, (r) => false),
+                          ),
+                          const SizedBox(height: 12),
+                          _resultOutlinedButton(
+                            icon: Icons.leaderboard_rounded,
+                            label: locale == 'ru' ? 'Рейтинг' : 'Reytingga o\'tish',
+                            onTap: () => Navigator.of(context).pushNamedAndRemoveUntil(
+                                Routes.battleLeaderboard,
+                                (r) => r.settings.name == Routes.battle),
+                          ),
+                          const SizedBox(height: 18),
+                          _resultTipBanner(tip),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _resultCloseButton(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          Navigator.of(context)
+              .pushNamedAndRemoveUntil(Routes.battle, (r) => false);
+        },
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.close_rounded, size: 20, color: BattleColors.ink),
+        ),
+      ),
+    );
+  }
+
+  Widget _scorePill(
+      BattleResultEntryModel me, BattleResultEntryModel? opponent, String locale) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.75),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Text.rich(
+        TextSpan(
+          style: const TextStyle(fontSize: 14.5, color: BattleColors.muted),
+          children: [
+            TextSpan(text: '${locale == 'ru' ? 'Счёт' : 'Hisob'}: '),
+            TextSpan(
+              text: '${me.score} – ${opponent?.score ?? 0}',
+              style: const TextStyle(
+                color: BattleColors.primary,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _resultPrimaryButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: BattleColors.actionGradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: BattleColors.actionGradient.last.withOpacity(0.4),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: Colors.white),
+              Expanded(
+                child: Center(
+                  child: Text(label,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 15, color: Colors.white)),
+                ),
+              ),
+              const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _resultOutlinedButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: BattleColors.ink,
+          side: const BorderSide(color: Color(0xFFE5E9F5)),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: BattleColors.ink),
+            Expanded(
+              child: Center(
+                child: Text(label,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 15, color: BattleColors.ink)),
+              ),
+            ),
+            const Icon(Icons.arrow_forward_rounded, size: 18, color: BattleColors.ink),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _resultTipBanner(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: BattleColors.primary.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: BattleColors.primary.withOpacity(0.14),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.lightbulb_rounded, size: 16, color: BattleColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 12.5, color: BattleColors.muted, height: 1.4),
+            ),
+          ),
+        ],
       ),
     );
   }
