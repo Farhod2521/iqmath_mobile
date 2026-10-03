@@ -10,6 +10,7 @@ import 'package:my_flutter_template/features/auth/presentation/page_args/auth_ar
 import 'package:my_flutter_template/features/profile/presentation/arguments/edit_profile_page_args.dart';
 import 'package:my_flutter_template/injector_container.dart';
 import '../../../../core/app_bloc/app_bloc.dart';
+import '../../../../core/device/device_widgets.dart';
 import '../../../../router/app_routes.dart';
 import '../../../../router/name_routes.dart';
 
@@ -370,6 +371,19 @@ class _ProfilePageState extends State<ProfilePage> {
                       const SizedBox(height: 22),
                       _sectionLabel(_t(locale, 'sectionSettings')),
                       _card([
+                        // 2 ta qurilma cheklovi faqat o'quvchilarga tegishli
+                        if ((sl<LocalSource>().getUserRole() ?? 'student') ==
+                            'student') ...[
+                          _menuRow(
+                            icon: Icons.devices_rounded,
+                            iconColor: const Color(0xFF0EA5E9),
+                            iconBg: const Color(0xFFE0F2FE),
+                            title: DeviceTexts.get(locale, 'tab'),
+                            subtitle: DeviceTexts.get(locale, 'tabSub'),
+                            onTap: () => _openRoute(Routes.devices),
+                          ),
+                          _divider(),
+                        ],
                         _menuRow(
                           icon: Icons.language_rounded,
                           iconColor: _kPrimary,

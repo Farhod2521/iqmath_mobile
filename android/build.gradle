@@ -9,6 +9,19 @@ rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
+// Eski plaginlar (masalan map_launcher — android-33) yangi AndroidX kutubxonalari
+// talab qiladigan compileSdk 34+ dan past bo'lsa, ularni 36 ga ko'taramiz.
+// Bu blok evaluationDependsOn'dan OLDIN turishi shart (afterEvaluate ro'yxatga olinishi uchun).
+subprojects {
+    afterEvaluate { project ->
+        if (project.plugins.hasPlugin("com.android.library")) {
+            def current = project.android.compileSdkVersion?.toString()?.replace("android-", "")
+            if (current != null && current.isInteger() && current.toInteger() < 34) {
+                project.android.compileSdkVersion 36
+            }
+        }
+    }
+}
 subprojects {
     project.evaluationDependsOn(":app")
 }

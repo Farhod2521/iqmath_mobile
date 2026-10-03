@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -18,6 +18,31 @@ import '../../../../generated/assets.dart';
 import '../bloc/subject_bloc/subject_bloc.dart';
 import '../widget/book_card_widget.dart';
 import 'package:flutter/material.dart';
+import '../widget/subject_stats_widgets.dart';
+
+bool _isGrade(String? className) =>
+    className != null && RegExp(r'^\d+$').hasMatch(className);
+
+/// Bitta fan bo'limi (Matematika, Algebra, ...) — sahifa va statistika uchun.
+class _SubjectSection {
+  final String title;
+  final List<SubjectResponse> books;
+  final List<SubjectResponse> graded; // faqat sinflarga bo'lingan, tartiblangan
+  final SubjectTheme theme;
+
+  _SubjectSection({
+    required this.title,
+    required this.books,
+    required this.theme,
+  }) : graded = books.where((b) => _isGrade(b.className)).toList()
+          ..sort((a, b) =>
+              int.parse(a.className!).compareTo(int.parse(b.className!)));
+
+  int? get firstGrade =>
+      graded.isEmpty ? null : int.parse(graded.first.className!);
+
+  int? get lastGrade => graded.isEmpty ? null : int.parse(graded.last.className!);
+}
 
 class SubjectPage extends StatefulWidget {
   const SubjectPage({super.key});
@@ -27,6 +52,8 @@ class SubjectPage extends StatefulWidget {
 }
 
 class _SubjectPageState extends State<SubjectPage> {
+  final Map<int, GlobalKey> _sectionKeys = {};
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +65,45 @@ class _SubjectPageState extends State<SubjectPage> {
     await Future.delayed(const Duration(milliseconds: 500));
   }
 
+  GlobalKey _keyFor(int index) =>
+      _sectionKeys.putIfAbsent(index, () => GlobalKey());
+
+  void _scrollToSection(int index) {
+    final ctx = _sectionKeys[index]?.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  List<_SubjectSection> _buildSections(
+    Map<String, List<SubjectResponse>>? grouped,
+    String? locale,
+  ) {
+    final entries = (grouped ?? {}).entries.toList();
+    return [
+      for (var i = 0; i < entries.length; i++)
+        _SubjectSection(
+          title: BaseFunctions.getLanguageText(
+            languageCode: locale,
+            uz: entries[i].key,
+            ru: entries[i].value.isNotEmpty
+                ? (entries[i].value.first.nameRu ?? entries[i].key)
+                : entries[i].key,
+          ),
+          books: entries[i].value,
+          theme: SubjectTheme.of(
+            entries[i].value.isNotEmpty
+                ? (entries[i].value.first.nameUz ?? entries[i].key)
+                : entries[i].key,
+            i,
+          ),
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final localization = AppLocalization.of(context);
@@ -46,8 +112,15 @@ class _SubjectPageState extends State<SubjectPage> {
         return BlocConsumer<SubjectBloc, SubjectState>(
           listener: (context, state) {},
           builder: (context, state) {
+            final sections =
+                _buildSections(state.groupedSubjects, appState.appLocale);
+            final statsSections = [
+              for (var i = 0; i < sections.length; i++)
+                if (sections[i].graded.isNotEmpty) i,
+            ];
+
             return CupertinoPageScaffold(
-              backgroundColor: CupertinoColors.systemGroupedBackground,
+              backgroundColor: const Color(0xFFF6F8FC),
               navigationBar: CupertinoNavigationBar(
                 leading: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -111,30 +184,36 @@ class _SubjectPageState extends State<SubjectPage> {
                         CupertinoSliverRefreshControl(
                           onRefresh: _refreshData,
                         ),
-                        SliverPadding(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final category = state.groupedSubjects?.keys
-                                    .elementAt(index);
-                                final books =
-                                    state.groupedSubjects?[category] ?? [];
-
-                                return CategorySection(
-                                  categoryTitle: BaseFunctions.getLanguageText(
-                                    languageCode: appState.appLocale,
-                                    uz: category,
-                                    ru: books.isNotEmpty
-                                        ? books.first.nameRu
-                                        : category,
+                        // Barcha bo'limlar bitta blokda quriladi — "Barchasini
+                        // ko'rish" bosilganda istalgan bo'limga aylantirish uchun
+                        // ularning hammasi doim chizilgan bo'lishi kerak.
+                        SliverToBoxAdapter(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (statsSections.isNotEmpty)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                                  child: StatsCarousel(
+                                    children: [
+                                      for (final i in statsSections)
+                                        _StatsCard(
+                                          section: sections[i],
+                                          locale: appState.appLocale,
+                                          onSeeAll: () => _scrollToSection(i),
+                                        ),
+                                    ],
                                   ),
-                                  books: books,
+                                ),
+                              for (var i = 0; i < sections.length; i++)
+                                _CategorySection(
+                                  key: _keyFor(i),
+                                  section: sections[i],
+                                  locale: appState.appLocale,
                                   onRefresh: _refreshData,
-                                );
-                              },
-                              childCount: state.groupedSubjects?.length ?? 0,
-                            ),
+                                ),
+                            ],
                           ),
                         ),
                         const SliverGap(80),
@@ -168,145 +247,202 @@ class _SubjectPageState extends State<SubjectPage> {
   }
 }
 
-class CategorySection extends StatelessWidget {
-  final String categoryTitle;
-  final List<SubjectResponse> books;
-  final VoidCallback onRefresh;
+// ═══════════════════════════ Statistika kartasi ═══════════════════════════
 
-  const CategorySection({
-    super.key,
-    required this.categoryTitle,
-    required this.books,
-    required this.onRefresh,
+/// Fan turi bo'yicha umumiy statistika: darslar holati va sinflar kesimidagi
+/// progress (umumiy SubjectStatsCard asosida, saytdagi StatsCard).
+class _StatsCard extends StatelessWidget {
+  final _SubjectSection section;
+  final String? locale;
+  final VoidCallback onSeeAll;
+
+  const _StatsCard({
+    required this.section,
+    required this.locale,
+    required this.onSeeAll,
   });
 
-  // Saytdagi CardSubject.jsx bilan bir xil zaxira palitra — rasmdan
-  // avtomatik rang olish mobile tomonda yo'q, shu sababli guruh ichida
-  // indeks bo'yicha aylanadigan sobit ranglar ishlatiladi.
-  static const List<Color> _kCardAccents = [
-    Color(0xFFEC4899),
-    Color(0xFFF97316),
-    Color(0xFF3B82F6),
-    Color(0xFF8B5CF6),
-    Color(0xFF10B981),
-    Color(0xFF06B6D4),
-  ];
+  String _t(String uz, String ru) =>
+      BaseFunctions.getLanguageText(languageCode: locale, uz: uz, ru: ru);
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    // Rasm 4:3 landshaft nisbatida to'liq ko'rinishi uchun karta ham
-    // gorizontal (kengroq) bo'lishi kerak — avvalgi tor-baland (portret)
-    // karta rasmni keskin kesib tashlar edi.
-    final cardWidth = screenWidth * 0.62;
+    final graded = section.graded;
+    final total = graded.fold<num>(0, (s, b) => s + (b.topicsCount ?? 0));
+    final completed =
+        graded.fold<num>(0, (s, b) => s + (b.completedTopics ?? 0));
+    final inProgress =
+        graded.fold<num>(0, (s, b) => s + (b.inProgressTopics ?? 0));
+    final notStarted = math.max<num>(0, total - completed - inProgress);
 
-    return BlocBuilder<AppBloc, AppState>(
-      builder: (context, appState) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0xFF007AFF),
-                          Color(0xFF0051D5),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      categoryTitle,
+    final first = section.firstGrade;
+    final last = section.lastGrade;
+
+    return SubjectStatsCard(
+      title: section.title,
+      theme: section.theme,
+      gradesLabel: first == last
+          ? _t('$first-sinf uchun', 'Для $first класса')
+          : _t('$first-$last sinflar uchun', 'Для $first-$last классов'),
+      overall: subjectPercent(completed, total),
+      overallLabel: _t('Umumiy progress', 'Общий прогресс'),
+      legend: [
+        StatsLegendItem(
+            color: section.theme.accent,
+            label: _t('Jami darslar', 'Всего уроков'),
+            value: total),
+        StatsLegendItem(
+            color: kStatsCompletedColor,
+            label: _t('Yakunlangan', 'Завершено'),
+            value: completed),
+        StatsLegendItem(
+            color: kStatsInProgressColor,
+            label: _t('Davom etilmoqda', 'В процессе'),
+            value: inProgress),
+        StatsLegendItem(
+            color: kStatsNotStartedColor,
+            label: _t('Boshlanmagan', 'Не начато'),
+            value: notStarted),
+      ],
+      grades: [
+        for (final b in graded)
+          (
+            label: b.className!,
+            value: subjectPercent(b.completedTopics ?? 0, b.topicsCount ?? 0),
+          ),
+      ],
+      seeAllLabel: _t("Barchasini ko'rish", 'Смотреть все'),
+      onSeeAll: onSeeAll,
+    );
+  }
+}
+
+
+// ═══════════════════════════ Fan bo'limi va kartalar ═══════════════════════════
+
+class _CategorySection extends StatelessWidget {
+  final _SubjectSection section;
+  final String? locale;
+  final VoidCallback onRefresh;
+
+  const _CategorySection({
+    super.key,
+    required this.section,
+    required this.locale,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final books = section.books;
+    final first = section.firstGrade;
+    final last = section.lastGrade;
+    final subtitle = first == null
+        ? ''
+        : first == last
+            ? BaseFunctions.getLanguageText(
+                languageCode: locale,
+                uz: '$first-sinf uchun darsliklar va mashqlar',
+                ru: 'Учебники и задания для $first класса',
+              )
+            : BaseFunctions.getLanguageText(
+                languageCode: locale,
+                uz: '$first-$last sinflar uchun darsliklar va mashqlar',
+                ru: 'Учебники и задания для $first-$last классов',
+              );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 28, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Sarlavha: rangli chiziq, nom va izoh
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 3),
+                width: 5,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: section.theme.accent,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      section.title,
                       style: const TextStyle(
                         fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: CupertinoColors.label,
-                        letterSpacing: -0.5,
+                        fontWeight: FontWeight.w800,
+                        color: kSubjectTitleColor,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          CupertinoIcons.book_fill,
-                          size: 20,
-                          color: Color(0xFF007AFF),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${books.length}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(
-              height: cardWidth * 0.75 + 78,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                itemCount: books.length,
-                itemBuilder: (context, index) {
-                  final grade = books[index].className ?? '';
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: SizedBox(
-                      width: cardWidth,
-                      child: BookCard(
-                        isOpen: books[index].isOpen ?? true,
-                        title: BaseFunctions.getLanguageText(
-                          languageCode: appState.appLocale,
-                          uz: books[index].nameUz ?? '',
-                          ru: books[index].nameRu ?? '',
-                        ),
-                        gradeLabel: appState.appLocale == 'ru'
-                            ? '$grade-класс'
-                            : '$grade-sinf',
-                        topicsCount: books[index].topicsCount?.toInt() ?? 0,
-                        questionsCount:
-                            books[index].questionsCount?.toInt() ?? 0,
-                        accentColor:
-                            _kCardAccents[index % _kCardAccents.length],
-                        locale: appState.appLocale,
-                        imagePath:
-                            'https://api.iqmath.uz${books[index].imageUz ?? ''}',
-                        id: books[index].id.toString(),
-                        isDiagnostic: books[index].isDiagnostOpen ?? false,
-                        onRefresh: onRefresh,
+                    if (subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style:
+                            const TextStyle(fontSize: 12.5, color: kSubjectMutedColor),
                       ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // 2 ustunli setka; bir qatordagi kartalar balandligi teng
+          for (var row = 0; row < books.length; row += 2)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: _buildCard(books[row])),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: row + 1 < books.length
+                          ? _buildCard(books[row + 1])
+                          : const SizedBox.shrink(),
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
             ),
-          ],
-        );
-      },
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard(SubjectResponse book) {
+    final grade = book.className ?? '';
+    final isRu = locale == 'ru';
+    return BookCard(
+      isOpen: book.isOpen ?? true,
+      title: BaseFunctions.getLanguageText(
+        languageCode: locale,
+        uz: book.nameUz ?? '',
+        ru: book.nameRu ?? '',
+      ),
+      gradeLabel: _isGrade(grade) ? (isRu ? '$grade-класс' : '$grade-sinf') : grade,
+      topicsCount: book.topicsCount?.toInt() ?? 0,
+      questionsCount: book.questionsCount?.toInt() ?? 0,
+      progress: math.min(100, math.max(0, book.progress?.round() ?? 0)),
+      accentColor: section.theme.accent,
+      softColor: section.theme.soft,
+      locale: locale,
+      imagePath: 'https://api.iqmath.uz${book.imageUz ?? ''}',
+      id: book.id.toString(),
+      isDiagnostic: book.isDiagnostOpen ?? false,
+      onRefresh: onRefresh,
     );
   }
 }
@@ -316,7 +452,9 @@ class BookCard extends StatefulWidget {
   final String gradeLabel;
   final int topicsCount;
   final int questionsCount;
+  final int progress;
   final Color accentColor;
+  final Color softColor;
   final String? locale;
   final String imagePath;
   final String id;
@@ -330,7 +468,9 @@ class BookCard extends StatefulWidget {
     required this.gradeLabel,
     required this.topicsCount,
     required this.questionsCount,
+    required this.progress,
     required this.accentColor,
+    required this.softColor,
     this.locale,
     required this.imagePath,
     required this.id,
@@ -357,7 +497,7 @@ class _BookCardState extends State<BookCard>
     );
     _scaleAnimation = Tween<double>(
       begin: 1.0,
-      end: 0.95,
+      end: 0.96,
     ).animate(CurvedAnimation(
       parent: _animationController,
       curve: Curves.easeInOut,
@@ -410,7 +550,6 @@ class _BookCardState extends State<BookCard>
                         ),
                         child: Image.asset(
                           'assets/images/shield_icon.png',
-                          // Rasmingizni shu yerga qo'ying
                           width: 64,
                           height: 64,
                           errorBuilder: (context, error, stackTrace) {
@@ -425,15 +564,14 @@ class _BookCardState extends State<BookCard>
 
                       // Title
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 24),
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Text(
-                          // 'Diagnostika testini boshlang',
                           BaseFunctions.getLanguageText(
                             languageCode: appState.appLocale,
                             uz: "Diagnostika testini boshlang",
                             ru: "Начните диагностический тест",
                           ),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
                             color: CupertinoColors.label,
@@ -445,16 +583,15 @@ class _BookCardState extends State<BookCard>
                       const SizedBox(height: 12),
 
                       // Description
-                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 32),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
                         child: Text(
-                          // 'Bilimlar darajasini aniqlash uchun diagnostika testini yechishingiz lozim',
                           BaseFunctions.getLanguageText(
                             languageCode: appState.appLocale,
                             uz: "Bilimlar darajasini aniqlash uchun diagnostika testini yechishingiz lozim",
                             ru: "Вам необходимо пройти диагностический тест для определения уровня знаний",
                           ),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 15,
                             color: CupertinoColors.secondaryLabel,
                             height: 1.4,
@@ -510,14 +647,13 @@ class _BookCardState extends State<BookCard>
                                     ),
                                   ],
                                 ),
-                                child:  Text(
-                                  // 'Boshlash',
+                                child: Text(
                                   BaseFunctions.getLanguageText(
                                     languageCode: appState.appLocale,
                                     uz: "Boshlash",
                                     ru: "Начать",
                                   ),
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w600,
                                     color: CupertinoColors.white,
@@ -534,14 +670,13 @@ class _BookCardState extends State<BookCard>
                               onPressed: () {
                                 Navigator.pop(context);
                               },
-                              child:  Text(
-                                // 'Bekor qilish',
+                              child: Text(
                                 BaseFunctions.getLanguageText(
                                   languageCode: appState.appLocale,
                                   uz: "Bekor qilish",
                                   ru: "Отмена",
                                 ),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w500,
                                   color: Color(0xFF007AFF),
@@ -596,265 +731,222 @@ class _BookCardState extends State<BookCard>
     }
   }
 
-  static const Color iosBlue = CupertinoColors.systemBlue;
-
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
     final isRu = widget.locale == 'ru';
+    final accent = widget.accentColor;
 
     return GestureDetector(
-      onTapDown: (_) {
-        if (!widget.isOpen) return;
-        _animationController.forward();
-      },
+      onTapDown: (_) => _animationController.forward(),
       onTapUp: (_) {
         _animationController.reverse();
         _handleTap();
       },
-      onTapCancel: () {
-        if (!widget.isOpen) return;
-        _animationController.reverse();
-      },
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: widget.isOpen ? _scaleAnimation.value : 1.0,
-            child: Container(
-              decoration: BoxDecoration(
-                color: CupertinoColors.systemBackground,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: CupertinoColors.systemGrey.withOpacity(0.2),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+      onTapCancel: () => _animationController.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFEDF0F5)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F1B3D).withOpacity(0.07),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Rasm bloki — 4:3 landshaft, saytdagi kabi to'liq ko'rinadi
-                    AspectRatio(
-                      aspectRatio: 4 / 3,
-                      child: Stack(
-                        children: [
-                          Positioned.fill(
-                            child: widget.imagePath.startsWith('http')
-                                ? Image.network(
-                                    widget.imagePath,
-                                    fit: BoxFit.cover,
-                                    loadingBuilder: (context, child, progress) {
-                                      if (progress == null) return child;
-                                      return Center(
-                                        child: CupertinoActivityIndicator(
-                                          radius: screenHeight * 0.015,
-                                        ),
-                                      );
-                                    },
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return _buildFallbackIcon(screenHeight);
-                                    },
-                                  )
-                                : _buildFallbackIcon(screenHeight),
-                          ),
-
-                          // Blur + Lock overlay when isOpen = false
-                          if (!widget.isOpen)
-                            Positioned.fill(
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        Colors.white.withOpacity(0.25),
-                                        Colors.white.withOpacity(0.15),
-                                      ],
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.15),
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.2),
-                                            blurRadius: 10,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Icon(
-                                        CupertinoIcons.lock_fill,
-                                        color: Colors.white,
-                                        size: screenHeight * 0.05,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Rasm — kesilmasdan, to'liq ko'rinadi (saytdagi 1920x819 nisbat)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: AspectRatio(
+                  aspectRatio: 1920 / 819,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Container(
+                        color: const Color(0xFFF4F7FC),
+                        child: widget.imagePath.startsWith('http')
+                            ? Image.network(
+                                widget.imagePath,
+                                fit: BoxFit.contain,
+                                loadingBuilder: (context, child, progress) {
+                                  if (progress == null) return child;
+                                  return const Center(
+                                    child:
+                                        CupertinoActivityIndicator(radius: 9),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) =>
+                                    _buildFallbackIcon(),
+                              )
+                            : _buildFallbackIcon(),
+                      ),
+                      if (!widget.isOpen)
+                        Container(
+                          color: Colors.black.withOpacity(0.2),
+                          alignment: Alignment.center,
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.92),
+                              shape: BoxShape.circle,
                             ),
+                            child: Icon(CupertinoIcons.lock_fill,
+                                size: 16, color: accent),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
 
-                          // Sinf belgisi + fan nomi — rasm ustida, saytdagiday
-                          Positioned(
-                            left: 10,
-                            right: 10,
-                            top: 10,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(6, 10, 6, 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Sinf, fan nomi va strelka
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: widget.accentColor,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    widget.gradeLabel,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                    ),
+                                Text(
+                                  widget.gradeLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 15.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: kSubjectTitleColor,
+                                    height: 1.15,
                                   ),
                                 ),
-                                const SizedBox(height: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 9,
-                                    vertical: 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.35),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.white.withOpacity(0.5),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    widget.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w800,
-                                      color: Color(0xFF191C1D),
-                                    ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  widget.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF5B6478),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-
-                    // Pastki bo'lim — dars/mashq soni + strelka tugmasi
-                    Padding(
-                      padding: const EdgeInsets.all(10),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _statPill(
-                              icon: CupertinoIcons.book,
-                              text:
-                                  '${widget.topicsCount} ${isRu ? 'урок' : 'dars'}',
-                            ),
-                          ),
                           const SizedBox(width: 6),
-                          Expanded(
-                            child: _statPill(
-                              icon: CupertinoIcons.doc_text,
-                              text: '${widget.questionsCount} '
-                                  '${isRu ? 'пример' : 'mashq'}',
-                            ),
-                          ),
-                          const SizedBox(width: 8),
                           Container(
                             width: 30,
                             height: 30,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: widget.accentColor,
+                              color: widget.softColor,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              CupertinoIcons.arrow_right,
-                              size: 13,
-                              color: Colors.white,
+                            child: Icon(
+                              widget.isOpen
+                                  ? CupertinoIcons.arrow_right
+                                  : CupertinoIcons.lock_fill,
+                              size: 14,
+                              color: accent,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+
+                      // Dars va mashq soni
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 4,
+                        children: [
+                          _stat(
+                            CupertinoIcons.book,
+                            '${widget.topicsCount} ${isRu ? 'урок' : 'dars'}',
+                          ),
+                          _stat(
+                            CupertinoIcons.doc_text,
+                            '${widget.questionsCount} ${isRu ? 'пример' : 'mashq'}',
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      const SizedBox(height: 10),
+
+                      // Progress
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: widget.progress / 100,
+                                minHeight: 6,
+                                backgroundColor: kSubjectTrackColor,
+                                valueColor: AlwaysStoppedAnimation(accent),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${widget.progress}%',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF5B6478),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _statPill({required IconData icon, required String text}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F5F9),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: iosBlue),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF4B5768),
-              ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildFallbackIcon(double screenHeight) {
+  Widget _stat(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: widget.accentColor),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: kSubjectMutedColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFallbackIcon() {
     return Center(
-      child: Container(
-        width: screenHeight * 0.1,
-        height: screenHeight * 0.1,
-        decoration: BoxDecoration(
-          color: iosBlue.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(screenHeight * 0.05),
-        ),
-        child: Icon(
-          CupertinoIcons.book_fill,
-          size: screenHeight * 0.045,
-          color: iosBlue,
-        ),
+      child: Icon(
+        CupertinoIcons.book_fill,
+        size: 28,
+        color: widget.accentColor.withOpacity(0.6),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:chuck_interceptor/chuck_interceptor.dart';
 import 'package:flutter/cupertino.dart';
@@ -52,6 +53,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'core/app_bloc/bloc_observer.dart';
+import 'core/device/device_identity.dart';
 import 'features/auth/data/data_source/local/auth_local_data_source.dart';
 import 'features/auth/data/data_source/remote/auth_remote_data_source.dart';
 import 'features/auth/domain/repository/auth_repository.dart';
@@ -80,6 +82,8 @@ Chuck alice = Chuck(navigatorKey: rootNavigatorKey, showNotification: true);
 Future<void> init() async {
   //External
   await initHive();
+  // Qurilma nomi / User-Agent (2 ta qurilma cheklovi uchun) — fonda aniqlanadi
+  unawaited(DeviceIdentity.init());
   sl.registerLazySingleton(
     () {
       final dio = Dio();
@@ -92,6 +96,8 @@ Future<void> init() async {
             var token = sl<LocalSource>().getAccessToken();
             request.headers.addAll({
               "Authorization": token,
+              // Backend qurilmani shu identifikator bo'yicha taniydi
+              "X-Device-Id": DeviceIdentity.deviceId(sl<LocalSource>()),
               "X-version": Platform.isIOS
                   ? "ios-${sl<LocalSource>().getAppVersion()?.split(',').firstOrNull ?? ''}"
                   : "android-${sl<LocalSource>().getAppVersion()?.split(',').firstOrNull ?? ''}",
@@ -106,6 +112,14 @@ Future<void> init() async {
             }
 
             if (error.response?.statusCode == 401) {
+              // Qurilma boshqa qurilmadan chiqarib yuborilgan — tokenni
+              // yangilab bo'lmaydi, darhol login sahifasiga qaytamiz
+              if (_isDeviceRevoked(error.response?.data)) {
+                await _logoutUser(deviceRevoked: true);
+                handler.next(error);
+                return;
+              }
+
               // Agar refresh token endpoint bo'lsa, to'g'ridan logout qil
               if (error.requestOptions.path.contains('/auth/token/refresh/')) {
                 await _logoutUser();
@@ -191,7 +205,8 @@ Future<void> init() async {
                 } else {
                   isRefreshing = false;
                   requestsQueue.clear();
-                  await _logoutUser();
+                  await _logoutUser(
+                      deviceRevoked: _isDeviceRevoked(response.data));
                   handler.next(error);
                 }
               } catch (e) {
@@ -256,7 +271,16 @@ Future<void> init() async {
   battleFeature();
 }
 
-Future<void> _logoutUser() async {
+/// 401 javobi qurilma "Qurilmalar" bo'limidan chiqarib yuborilgani sababli
+/// kelganmi (backend: authentication.py / token_refresh.py).
+bool _isDeviceRevoked(dynamic body) {
+  if (body is! Map) return false;
+  if (body['code'] == 'device_revoked') return true;
+  final detail = body['detail']?.toString() ?? '';
+  return detail.contains('chiqarib yuborilgan');
+}
+
+Future<void> _logoutUser({bool deviceRevoked = false}) async {
   String phoneNumber = sl<LocalSource>().getPhoneNumber() ?? '';
   String password = sl<LocalSource>().getUserPassword() ?? '';
   String pinCode = sl<LocalSource>().getPinCode() ?? '';
@@ -266,6 +290,7 @@ Future<void> _logoutUser() async {
   sl<LocalSource>().setPhoneNumber(phoneNumber);
   sl<LocalSource>().setUserPassword(password);
   sl<LocalSource>().setPinCode(pinCode);
+  if (deviceRevoked) sl<LocalSource>().setDeviceRevoked(true);
 
   Future.microtask(() {
     if (rootNavigatorKey.currentContext != null) {

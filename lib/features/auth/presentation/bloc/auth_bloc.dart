@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:my_flutter_template/core/device/device_model.dart';
 import 'package:my_flutter_template/core/error/failure.dart';
 import 'package:my_flutter_template/core/local_source/local_source.dart';
 import 'package:my_flutter_template/core/mixins/base_bloc_mixin.dart';
@@ -188,11 +189,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with BaseBlocMixin {
         LoginRequestEntity(
           phoneNumber: "998$newPhoneNumber",
           password: event.password,
+          replaceDeviceId: event.replaceDeviceId,
         ),
       ),
     );
     response.fold(
       (error) {
+        if (error is DeviceLimitFailure) {
+          // 2 ta qurilma chegarasi — sahifa qurilmani tanlash oynasini ochadi
+          emit(
+            state.copyWith(
+              stateStatus: AuthStateStatus.deviceLimit,
+              deviceLimit: error.info,
+            ),
+          );
+          return;
+        }
         emit(
           state.copyWith(
             stateStatus: AuthStateStatus.error,

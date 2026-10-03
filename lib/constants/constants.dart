@@ -27,6 +27,8 @@ class AppKeys {
   static const APPVERSION = 'app_version';
   static const FORCEUPDATE = 'force_update';
   static const ISLOGGEDIN='is_logged_in';
+  static const DEVICE_ID = 'iq_device_id';
+  static const DEVICE_REVOKED = 'iq_device_revoked';
 }
 
 class Urls {
@@ -48,6 +50,8 @@ class Urls {
   static const ORDERCLOSE = '/v1/order/close';
   static const SUBJECTS = '/func_student/my-subjects/';
   static const UPDATE_USER = '/auth/user/update-profile/';
+  // Qurilmalar: GET ro'yxat (?status=active|all), DELETE `${MY_DEVICES}{id}/`
+  static const MY_DEVICES = '/auth/user/devices/';
 
   // Bosh sahifa (dashboard) — iqmath_student veb ilovasi bilan bir xil endpointlar
   static const HOME_DASHBOARD = '/func_student/student/home-dashboard/app';

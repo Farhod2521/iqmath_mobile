@@ -1,70 +1,50 @@
-import 'package:flutter/material.dart';
+import 'dart:math' as math;
+
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gap/gap.dart';
-import 'package:http/http.dart' as http;
 import 'package:my_flutter_template/core/theme/colors/app_colors.dart';
-import 'package:my_flutter_template/core/utils/base_utils.dart';
 import 'package:my_flutter_template/features/diagnostics/data/models/subject.dart';
-import 'package:my_flutter_template/features/suggestion/presentation/widget/suggestion_chapter_widget.dart';
-import 'dart:convert';
-import 'dart:ui';
 
+import '../../../../constants/constants.dart';
 import '../../../../core/app_bloc/app_bloc.dart';
-import '../../../../core/local_source/local_source.dart';
 import '../../../../generated/assets.dart';
 import '../../../../injector_container.dart';
 import '../../../../router/app_routes.dart';
 import '../../../../router/name_routes.dart';
+import '../../../subject/presentation/widget/subject_stats_widgets.dart';
 import '../../../subject/presentation/widget/topic_card.dart';
+import '../diagnostic_texts.dart';
+import 'diagnostic_results_page.dart';
 
-class DiagnosticsLocalization {
-  static Map<String, Map<String, String>> translations = {
-    'uz': {
-      'diagnostics': 'Diagnostika',
-      'diagnosticsSub': 'Bilim darajangizni tekshirib ko\'ring',
-      'loading': 'Yuklanmoqda...',
-      'loadError': 'Ma\'lumotlarni yuklashda xatolik yuz berdi',
-      'internetError': 'Internet bilan bog\'lanishda muammo',
-      'tryAgain': 'Iltimos, qaytadan urinib ko\'ring',
-      'reload': 'Qaytadan yuklash',
-      'all': 'Hammasi',
-      'started': 'Boshlangan',
-      'notStarted': 'Boshlanmagan',
-      'finished': 'Yakunlangan',
-      'noBooksFound': 'Darsliklar topilmadi',
-      'noAssignedBooks': 'Hozircha sizga tayinlangan darsliklar yo\'q',
-      'noFilteredBooks': 'Bu filtrga mos darsliklar topilmadi',
-      'new': 'Yangi',
-      'start': 'Boshlash',
-    },
-    'ru': {
-      'diagnostics': 'Диагностика',
-      'diagnosticsSub': 'Проверьте уровень своих знаний',
-      'loading': 'Загрузка...',
-      'loadError': 'Ошибка при загрузке данных',
-      'internetError': 'Проблема с подключением к интернету',
-      'tryAgain': 'Пожалуйста, попробуйте еще раз',
-      'reload': 'Перезагрузить',
-      'all': 'Все',
-      'started': 'Начатые',
-      'notStarted': 'Не начатые',
-      'finished': 'Завершённые',
-      'noBooksFound': 'Учебники не найдены',
-      'noAssignedBooks': 'Пока вам не назначены учебники',
-      'noFilteredBooks': 'Учебники по этому фильтру не найдены',
-      'new': 'Новый',
-      'start': 'Начать',
-    },
-  };
+/// Bitta fan turi (Matematika, Algebra, ...) bo'yicha diagnostika bo'limi.
+class _DiagnosticSection {
+  final String title;
+  final List<Subject> items;
+  final List<Subject> graded;
+  final SubjectTheme theme;
 
-  static String get(String key, String locale) {
-    return translations[locale]?[key] ?? translations['uz']![key]!;
-  }
+  _DiagnosticSection({
+    required this.title,
+    required this.items,
+    required this.theme,
+  }) : graded = items.where((s) => isGradeName(s.className)).toList()
+          ..sort((a, b) =>
+              int.parse(a.className).compareTo(int.parse(b.className)));
+
+  int? get firstGrade =>
+      graded.isEmpty ? null : int.parse(graded.first.className);
+
+  int? get lastGrade => graded.isEmpty ? null : int.parse(graded.last.className);
 }
 
+/// Diagnostika — saytdagi DiagnosticSubjects sahifasi: fan turlari bo'yicha
+/// statistika karuseli va har bir fan uchun diagnostika kartasi
+/// ("Boshlash" / "Natijalarim" / "Qayta topshirish").
 class DiagnosticsPage extends StatefulWidget {
   const DiagnosticsPage({super.key});
 
@@ -73,11 +53,12 @@ class DiagnosticsPage extends StatefulWidget {
 }
 
 class _DiagnosticsPageState extends State<DiagnosticsPage> {
-  List<Subject> subjects = [];
-  Map<String, List<Subject>> categorizedSubjects = {};
-  bool isLoading = true;
-  String? errorMessage;
-  String selectedFilter = 'all';
+  final Dio _dio = sl<Dio>();
+  final Map<int, GlobalKey> _sectionKeys = {};
+
+  List<Subject> _subjects = const [];
+  bool _loading = true;
+  bool _failed = false;
 
   @override
   void initState() {
@@ -85,85 +66,93 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
     _fetchSubjects();
   }
 
-  List<String> getFilters(String locale) {
+  Future<void> _fetchSubjects() async {
+    setState(() {
+      _loading = _subjects.isEmpty;
+      _failed = false;
+    });
+    try {
+      final response = await _dio
+          .get('${Constants.baseUrl}/func_student/my-diagnost-subjects/');
+      final subjects = ((response.data as List?) ?? const [])
+          .whereType<Map>()
+          .map((e) => Subject.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        _subjects = subjects;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _failed = true;
+      });
+    }
+  }
+
+  List<_DiagnosticSection> _buildSections(String? locale) {
+    final grouped = <String, List<Subject>>{};
+    for (final subject in _subjects) {
+      grouped.putIfAbsent(subject.nameUz, () => []).add(subject);
+    }
+    final entries = grouped.entries.toList();
     return [
-      DiagnosticsLocalization.get('all', locale),
-      DiagnosticsLocalization.get('started', locale),
-      DiagnosticsLocalization.get('notStarted', locale),
-      DiagnosticsLocalization.get('finished', locale),
+      for (var i = 0; i < entries.length; i++)
+        _DiagnosticSection(
+          title: locale == 'ru' && entries[i].value.first.nameRu.isNotEmpty
+              ? entries[i].value.first.nameRu
+              : entries[i].key,
+          items: entries[i].value,
+          theme: SubjectTheme.of(entries[i].key, i),
+        ),
     ];
   }
 
-  Future<void> _fetchSubjects() async {
-    var token = sl<LocalSource>().getAccessToken();
-    try {
-      final response = await http.get(
-        Uri.parse(
-            'https://api.iqmath.uz/api/v1/func_student/my-diagnost-subjects/'),
-        headers: {
-          'Authorization': '$token',
-        },
-      );
-      alice.onHttpResponse(response);
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        setState(() {
-          subjects = data.map((json) => Subject.fromJson(json)).toList();
-          _categorizeSubjects();
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          errorMessage = 'loadError';
-          isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        errorMessage = 'internetError';
-        isLoading = false;
-      });
-      print('Error: $e');
-    }
+  GlobalKey _keyFor(int index) =>
+      _sectionKeys.putIfAbsent(index, () => GlobalKey());
+
+  void _scrollToSection(int index) {
+    final ctx = _sectionKeys[index]?.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeInOut,
+    );
   }
 
-  void _categorizeSubjects() {
-    categorizedSubjects.clear();
+  String _taskName(Subject subject, String? locale) =>
+      locale == 'ru' ? subject.classRu : subject.classUz;
 
-    List<Subject> filteredList;
-    if (selectedFilter == 'all') {
-      filteredList = subjects;
-    } else if (selectedFilter == 'started') {
-      filteredList = subjects
-          .where((s) => s.progressPercent > 0 && s.progressPercent < 100)
-          .toList();
-    } else if (selectedFilter == 'finished') {
-      filteredList =
-          subjects.where((s) => s.progressPercent >= 100).toList();
-    } else {
-      filteredList = subjects.where((s) => s.progressPercent == 0).toList();
-    }
-
-    for (var subject in filteredList) {
-      if (!categorizedSubjects.containsKey(subject.nameUz)) {
-        categorizedSubjects[subject.nameUz] = [];
-      }
-      categorizedSubjects[subject.nameUz]!.add(subject);
-    }
+  Future<void> _start(Subject subject, String? locale) async {
+    HapticFeedback.mediumImpact();
+    await Navigator.pushNamed(
+      mainRootNavigatorKey.currentContext!,
+      Routes.questions,
+      arguments: QuestionPageArguments(
+        topic: null,
+        isDiagnostic: true,
+        taskName: _taskName(subject, locale),
+        subjectId: subject.id.toString(),
+      ),
+    );
+    // Testdan qaytganda yangi natija darhol ko'rinsin
+    if (mounted) _fetchSubjects();
   }
 
-  void _applyFilter(String filter) {
-    setState(() {
-      selectedFilter = filter;
-      _categorizeSubjects();
-    });
-  }
-
-  Future<void> _refreshData() async {
-    setState(() {
-      errorMessage = null;
-    });
-    await _fetchSubjects();
+  Future<void> _openResults(Subject subject, String? locale) async {
+    HapticFeedback.lightImpact();
+    await Navigator.pushNamed(
+      mainRootNavigatorKey.currentContext!,
+      Routes.diagnosticResults,
+      arguments: DiagnosticResultsArgs(
+        subjectId: subject.id.toString(),
+        title: _taskName(subject, locale),
+      ),
+    );
+    if (mounted) _fetchSubjects();
   }
 
   @override
@@ -171,45 +160,47 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
     return BlocBuilder<AppBloc, AppState>(
       builder: (context, appState) {
         final locale = appState.appLocale ?? 'uz';
-        final filters = getFilters(locale);
+        final sections = _buildSections(locale);
+        final statsSections = [
+          for (var i = 0; i < sections.length; i++)
+            if (sections[i].graded.isNotEmpty) i,
+        ];
 
         return CupertinoPageScaffold(
-          backgroundColor: CupertinoColors.systemGroupedBackground,
+          backgroundColor: const Color(0xFFF6F8FC),
           navigationBar: CupertinoNavigationBar(
             leading: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Color(0xFF007AFF),
-                        Color(0xFF5856D6),
-                      ],
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Color(0xFF007AFF).withOpacity(0.3),
+                        color: const Color(0xFF007AFF).withValues(alpha: 0.3),
                         blurRadius: 8,
-                        offset: Offset(0, 2),
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
                   child: SvgPicture.asset(
                     Assets.svgChartDiagram,
-                    color: context.color.white,
+                    colorFilter: ColorFilter.mode(
+                        context.color.white, BlendMode.srcIn),
                     width: 28,
                     height: 28,
                   ),
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Text(
-                  DiagnosticsLocalization.get('diagnostics', locale),
-                  style: TextStyle(
+                  DiagnosticTexts.get(locale, 'diagnostics'),
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w600,
                     color: CupertinoColors.black,
@@ -218,7 +209,7 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
                 ),
               ],
             ),
-            bottom: PreferredSize(
+            bottom: const PreferredSize(
               preferredSize: Size(double.infinity, 8),
               child: SizedBox.shrink(),
             ),
@@ -227,16 +218,16 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
           ),
           child: SafeArea(
             bottom: false,
-            child: isLoading && subjects.isEmpty
+            child: _loading
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CupertinoActivityIndicator(radius: 16),
-                        SizedBox(height: 16),
+                        const CupertinoActivityIndicator(radius: 16),
+                        const SizedBox(height: 16),
                         Text(
-                          DiagnosticsLocalization.get('loading', locale),
-                          style: TextStyle(
+                          DiagnosticTexts.get(locale, 'loading'),
+                          style: const TextStyle(
                             fontSize: 14,
                             color: CupertinoColors.secondaryLabel,
                           ),
@@ -244,36 +235,50 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
                       ],
                     ),
                   )
-                : errorMessage != null && subjects.isEmpty
-                    ? _buildErrorView(locale)
+                : _failed && _subjects.isEmpty
+                    ? _errorView(locale)
                     : CustomScrollView(
                         physics: const BouncingScrollPhysics(),
                         slivers: [
                           CupertinoSliverRefreshControl(
-                            onRefresh: _refreshData,
+                            onRefresh: _fetchSubjects,
                           ),
-                          SliverToBoxAdapter(
-                            child: _buildFilterChips(locale, filters),
-                          ),
-                          if (categorizedSubjects.isEmpty)
+                          if (sections.isEmpty)
                             SliverFillRemaining(
-                              child: _buildEmptyView(locale),
+                              child: Center(
+                                child: Text(
+                                  DiagnosticTexts.get(locale, 'empty'),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    color: CupertinoColors.secondaryLabel,
+                                  ),
+                                ),
+                              ),
                             )
                           else
-                            ...categorizedSubjects.entries.map((entry) {
-                              return SliverToBoxAdapter(
-                                child: CategorySection(
-                                  // categoryTitle: entry.key,
-                                  categoryTitle: BaseFunctions.getLanguageText(
-                                    languageCode: appState.appLocale,
-                                    uz: entry.key,
-                                    ru: entry.value.first.nameRu,
-                                  ),
-                                  books: entry.value,
-                                  locale: locale,
-                                ),
-                              );
-                            }),
+                            // Barcha bo'limlar bitta blokda — "Barchasini
+                            // ko'rish" istalgan bo'limga aylantira olishi uchun
+                            SliverToBoxAdapter(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (statsSections.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                          16, 16, 16, 0),
+                                      child: StatsCarousel(
+                                        children: [
+                                          for (final i in statsSections)
+                                            _statsCard(sections[i], locale,
+                                                () => _scrollToSection(i)),
+                                        ],
+                                      ),
+                                    ),
+                                  for (var i = 0; i < sections.length; i++)
+                                    _section(sections[i], locale, _keyFor(i)),
+                                ],
+                              ),
+                            ),
                           const SliverGap(100),
                         ],
                       ),
@@ -283,135 +288,18 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
     );
   }
 
-  // Har bir filtrga mos ikonka va aksent rang — holatni bir qarashda
-  // ajratish uchun (Hammasi/Boshlangan/Boshlanmagan/Yakunlangan).
-  static const List<IconData> _kFilterIcons = [
-    CupertinoIcons.square_grid_2x2_fill,
-    CupertinoIcons.play_fill,
-    CupertinoIcons.time,
-    CupertinoIcons.star_fill,
-  ];
-
-  static const List<Color> _kFilterColors = [
-    Color(0xFF007AFF), // Hammasi — ko'k
-    Color(0xFF34C759), // Boshlangan — yashil
-    Color(0xFFFF9500), // Boshlanmagan — apelsin
-    Color(0xFFAF52DE), // Yakunlangan — binafsha
-  ];
-
-  Widget _buildFilterChips(String locale, List<String> filters) {
-    const filterKeys = ['all', 'started', 'notStarted', 'finished'];
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      child: Row(
-        children: List.generate(filters.length, (index) {
-          final filterKey = filterKeys[index];
-          final isSelected = selectedFilter == filterKey;
-          final accent = _kFilterColors[index];
-
-          return Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(right: index == filters.length - 1 ? 0 : 8),
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  _applyFilter(filterKey);
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-                  decoration: BoxDecoration(
-                    gradient: isSelected
-                        ? LinearGradient(
-                            colors: [accent, accent.withOpacity(0.82)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : null,
-                    color: isSelected ? null : CupertinoColors.systemBackground,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (isSelected ? accent : CupertinoColors.systemGrey)
-                            .withOpacity(isSelected ? 0.35 : 0.1),
-                        blurRadius: isSelected ? 14 : 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 26,
-                        height: 26,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Colors.white.withOpacity(0.25)
-                              : accent.withOpacity(0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _kFilterIcons[index],
-                          size: 14,
-                          color: isSelected ? Colors.white : accent,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        filters[index],
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: isSelected
-                              ? CupertinoColors.white
-                              : CupertinoColors.label,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  Widget _buildErrorView(String locale) {
+  Widget _errorView(String locale) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFFFF3B30).withOpacity(0.2),
-                    const Color(0xFFFF3B30).withOpacity(0.05),
-                  ],
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                CupertinoIcons.exclamationmark_triangle_fill,
-                size: 40,
-                color: Color(0xFFFF3B30),
-              ),
-            ),
-            const SizedBox(height: 24),
+            const Icon(CupertinoIcons.exclamationmark_triangle_fill,
+                size: 40, color: Color(0xFFFF3B30)),
+            const SizedBox(height: 16),
             Text(
-              DiagnosticsLocalization.get(errorMessage!, locale),
+              DiagnosticTexts.get(locale, 'loadError'),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 16,
@@ -419,24 +307,15 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
                 color: CupertinoColors.label,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              DiagnosticsLocalization.get('tryAgain', locale),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: CupertinoColors.secondaryLabel,
-              ),
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             CupertinoButton(
-              onPressed: _refreshData,
+              onPressed: _fetchSubjects,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
               borderRadius: BorderRadius.circular(12),
               color: const Color(0xFF007AFF),
               child: Text(
-                DiagnosticsLocalization.get('reload', locale),
-                style: TextStyle(fontWeight: FontWeight.w600),
+                DiagnosticTexts.get(locale, 'reload'),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -445,692 +324,458 @@ class _DiagnosticsPageState extends State<DiagnosticsPage> {
     );
   }
 
-  Widget _buildEmptyView(String locale) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    CupertinoColors.systemGrey.withOpacity(0.2),
-                    CupertinoColors.systemGrey.withOpacity(0.05),
+  /// Fan turi bo'yicha statistika: o'rtacha natija (topshirilmagan fan 0%
+  /// hisoblanadi), topshirilgan / topshirilmagan fanlar va zaif mavzular.
+  Widget _statsCard(
+      _DiagnosticSection section, String locale, VoidCallback onSeeAll) {
+    String t(String key, [Map<String, Object>? args]) =>
+        DiagnosticTexts.get(locale, key, args);
+    final items = section.items;
+    final taken = items.where((s) => s.hasTakenDiagnostic).toList();
+    final average = items.isEmpty
+        ? 0
+        : (taken.fold<int>(0, (sum, s) => sum + s.score) / items.length)
+            .round();
+    final weak = taken.fold<int>(0, (sum, s) => sum + s.weakTopicsCount);
+    final first = section.firstGrade;
+    final last = section.lastGrade;
+
+    return SubjectStatsCard(
+      title: section.title,
+      theme: section.theme,
+      gradesLabel: first == last
+          ? t('statsGrade', {'grade': '$first'})
+          : t('statsGrades', {'from': '$first', 'to': '$last'}),
+      overall: average,
+      overallLabel: t('statsOverall'),
+      legend: [
+        StatsLegendItem(
+            color: section.theme.accent,
+            label: t('statsTotal'),
+            value: items.length),
+        StatsLegendItem(
+            color: kStatsCompletedColor,
+            label: t('statsTaken'),
+            value: taken.length),
+        StatsLegendItem(
+            color: kStatsNotStartedColor,
+            label: t('statsNotTaken'),
+            value: items.length - taken.length),
+        StatsLegendItem(
+            color: kStatsInProgressColor,
+            label: t('statsWeak'),
+            value: weak),
+      ],
+      grades: [
+        for (final s in section.graded) (label: s.className, value: s.score),
+      ],
+      seeAllLabel: t('seeAll'),
+      onSeeAll: onSeeAll,
+    );
+  }
+
+  Widget _section(_DiagnosticSection section, String locale, Key key) {
+    final first = section.firstGrade;
+    final last = section.lastGrade;
+    final subtitle = first == null
+        ? ''
+        : first == last
+            ? DiagnosticTexts.get(
+                locale, 'sectionSubtitleSingle', {'grade': '$first'})
+            : DiagnosticTexts.get(locale, 'sectionSubtitle',
+                {'from': '$first', 'to': '$last'});
+    final items = section.items;
+
+    return Padding(
+      key: key,
+      padding: const EdgeInsets.fromLTRB(16, 28, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SubjectSectionHeader(
+            title: section.title,
+            subtitle: subtitle,
+            accent: section.theme.accent,
+          ),
+          const SizedBox(height: 14),
+          // 2 ustunli setka; bir qatordagi kartalar balandligi teng
+          for (var row = 0; row < items.length; row += 2)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: _card(items[row], section.theme, locale)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: row + 1 < items.length
+                          ? _card(items[row + 1], section.theme, locale)
+                          : const SizedBox.shrink(),
+                    ),
                   ],
                 ),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                CupertinoIcons.book_fill,
-                size: 50,
-                color: CupertinoColors.systemGrey,
               ),
             ),
-            const SizedBox(height: 24),
-            Text(
-              DiagnosticsLocalization.get('noBooksFound', locale),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: CupertinoColors.label,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              selectedFilter == 'all'
-                  ? DiagnosticsLocalization.get('noAssignedBooks', locale)
-                  : DiagnosticsLocalization.get('noFilteredBooks', locale),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: CupertinoColors.secondaryLabel,
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
-}
 
-// Part 2 - CategorySection va DiagnosticBookCard
-
-class CategorySection extends StatelessWidget {
-  final String categoryTitle;
-  final List<Subject> books;
-  final String locale;
-
-  const CategorySection({
-    super.key,
-    required this.categoryTitle,
-    required this.books,
-    required this.locale,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Rasm 4:3 landshaft nisbatida to'liq ko'rinishi uchun karta ham
-    // gorizontal (kengroq) — Fanlar sahifasidagi kartalar bilan bir xil.
-    final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = screenWidth * 0.62;
-    final cardHeight = cardWidth * 0.75 + 40;
-
-    return BlocBuilder<AppBloc, AppState>(
-      builder: (context, appState) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0xFF007AFF),
-                          Color(0xFF0051D5),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      categoryTitle,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: CupertinoColors.label,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          CupertinoIcons.book_fill,
-                          size: 20,
-                          color: const Color(0xFF007AFF),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${books.length}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(
-              height: cardHeight + 24,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                itemCount: books.length,
-                itemBuilder: (context, index) {
-                  final grade = books[index].className;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: SizedBox(
-                      width: cardWidth,
-                      height: cardHeight,
-                      child: DiagnosticBookCard(
-                        subject: books[index],
-                        gradeLabel: appState.appLocale == 'ru'
-                            ? '$grade-класс'
-                            : '$grade-sinf',
-                        locale: locale,
-                        onTap: () async {
-                          HapticFeedback.mediumImpact();
-                          await Navigator.pushNamed(
-                            mainRootNavigatorKey.currentContext!,
-                            Routes.questions,
-                            arguments: QuestionPageArguments(
-                              topic: null,
-                              isDiagnostic: true,
-                              // taskName: books[index].classUz,
-                              taskName: BaseFunctions.getLanguageText(
-                                languageCode: appState.appLocale,
-                                uz: books[index].classUz,
-                                ru: books[index].classRu,
-                              ),
-                              subjectId: books[index].id.toString(),
-                            ),
-                          ).then((value) {
-                            if (value != null) {
-                              if (value as bool) {
-                                _openChapterSelection(
-                                    books[index].id.toString(), context);
-                              }
-                            }
-                          });
-                        },
-                        refreshOnTap: () async {
-                          HapticFeedback.mediumImpact();
-                          await Navigator.pushNamed(
-                            mainRootNavigatorKey.currentContext!,
-                            Routes.questions,
-                            arguments: QuestionPageArguments(
-                              topic: null,
-                              isDiagnostic: true,
-                              taskName: BaseFunctions.getLanguageText(
-                                languageCode: appState.appLocale,
-                                uz: books[index].nameUz,
-                                ru: books[index].nameRu,
-                              ),
-                              subjectId: books[index].id.toString(),
-                            ),
-                          ).then((value) {
-                            if (value != null) {
-                              if (value as bool) {
-                                _openChapterSelection(
-                                    books[index].id.toString(), context);
-                              }
-                            }
-                          });
-                        },
-                        eyeOnTap: () {
-                          _openChapterSelection(
-                              books[index].id.toString(), context);
-                        },
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _openChapterSelection(String id, BuildContext context) {
-    var token = sl<LocalSource>().getAccessToken();
-    showChapterBottomSheet(
-      context: context,
-      authToken: token ?? '',
-      onTopicSelected: (int topicId) {},
-      id: id,
+  Widget _card(Subject subject, SubjectTheme theme, String locale) {
+    return _DiagnosticCard(
+      subject: subject,
+      theme: theme,
+      locale: locale,
+      onStart: () => _start(subject, locale),
+      onResults: () => _openResults(subject, locale),
     );
   }
 }
 
-class DiagnosticBookCard extends StatefulWidget {
+/// Diagnostika kartasi (saytdagi CardDiagnostic): fan rasmi va nomi,
+/// natija qatori, oxirgi sana / urinishlar / zaif mavzular va tugmalar.
+class _DiagnosticCard extends StatefulWidget {
   final Subject subject;
-  final String gradeLabel;
+  final SubjectTheme theme;
   final String locale;
-  final VoidCallback onTap;
-  final VoidCallback eyeOnTap;
-  final VoidCallback refreshOnTap;
+  final VoidCallback onStart;
+  final VoidCallback onResults;
 
-  const DiagnosticBookCard({
-    super.key,
+  const _DiagnosticCard({
     required this.subject,
-    required this.gradeLabel,
+    required this.theme,
     required this.locale,
-    required this.onTap,
-    required this.eyeOnTap,
-    required this.refreshOnTap,
+    required this.onStart,
+    required this.onResults,
   });
 
   @override
-  State<DiagnosticBookCard> createState() => _DiagnosticBookCardState();
+  State<_DiagnosticCard> createState() => _DiagnosticCardState();
 }
 
-class _DiagnosticBookCardState extends State<DiagnosticBookCard>
+class _DiagnosticCardState extends State<_DiagnosticCard>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  bool _isRefreshPressed = false;
-  bool _isEyePressed = false;
-  bool _isStartPressed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 150),
-      vsync: this,
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
+  late final AnimationController _press = AnimationController(
+    duration: const Duration(milliseconds: 150),
+    vsync: this,
+  );
+  late final Animation<double> _scale =
+      Tween<double>(begin: 1, end: 0.96).animate(
+    CurvedAnimation(parent: _press, curve: Curves.easeInOut),
+  );
 
   @override
   void dispose() {
-    _controller.dispose();
+    _press.dispose();
     super.dispose();
   }
 
-  List<Color> _getButtonGradient() {
-    return [const Color(0xFF007AFF), const Color(0xFF0051D5)];
-  }
+  String _t(String key, [Map<String, Object>? args]) =>
+      DiagnosticTexts.get(widget.locale, key, args);
 
-  List<Color> _getProgressGradient(int progress) {
-    if (progress == 0) {
-      return [const Color(0xFF8E8E93), const Color(0xFF636366)];
-    } else if (progress < 30) {
-      return [const Color(0xFFFF6B6B), const Color(0xFFFF3B30)];
-    } else if (progress < 60) {
-      return [const Color(0xFFFFB444), const Color(0xFFFF9500)];
-    } else if (progress < 90) {
-      return [const Color(0xFFFFD60A), const Color(0xFFFFCC00)];
-    } else {
-      return [const Color(0xFF34C759), const Color(0xFF30B350)];
-    }
-  }
+  /// Natija rangi: yaxshi — yashil, o'rtacha — fan rangi, past — sariq.
+  Color _scoreColor(int score) => score >= 80
+      ? const Color(0xFF22C55E)
+      : score >= 50
+          ? widget.theme.accent
+          : const Color(0xFFF59E0B);
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    // final imageUrl = widget.subject.imageUz.isNotEmpty
-    //     ? 'https://api.iqmath.uz${widget.subject.imageUz}'
-    //     : '';
-    final progress = widget.subject.progressPercent.toInt();
-    final progressGradient = _getProgressGradient(progress);
-    final buttonGradient = _getButtonGradient();
+    final subject = widget.subject;
+    final accent = widget.theme.accent;
+    final taken = subject.hasTakenDiagnostic;
+    final score = subject.score;
+    final color = _scoreColor(score);
+    final isRu = widget.locale == 'ru';
+    final grade = subject.className;
+    final gradeLabel = isGradeName(grade)
+        ? '$grade-${isRu ? 'класс' : 'sinf'}'
+        : grade;
+    final name = isRu && subject.nameRu.isNotEmpty
+        ? subject.nameRu
+        : subject.nameUz;
 
-    return BlocBuilder<AppBloc, AppState>(
-      builder: (context, appState) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            GestureDetector(
-              onTap: widget.onTap,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemBackground,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: CupertinoColors.systemGrey.withOpacity(0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+    return GestureDetector(
+      onTapDown: (_) => _press.forward(),
+      onTapUp: (_) {
+        _press.reverse();
+        widget.onStart();
+      },
+      onTapCancel: () => _press.reverse(),
+      child: ScaleTransition(
+        scale: _scale,
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFEDF0F5)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F1B3D).withValues(alpha: 0.07),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: AspectRatio(
+                  aspectRatio: 1920 / 819,
+                  child: Container(
+                    color: const Color(0xFFF4F7FC),
+                    child: subject.imageUz.isNotEmpty
+                        ? Image.network(
+                            'https://api.iqmath.uz${subject.imageUz}',
+                            fit: BoxFit.contain,
+                            loadingBuilder: (context, child, progress) =>
+                                progress == null
+                                    ? child
+                                    : const Center(
+                                        child: CupertinoActivityIndicator(
+                                            radius: 9)),
+                            errorBuilder: (_, __, ___) => Icon(
+                                CupertinoIcons.book_fill,
+                                color: accent.withValues(alpha: 0.6)),
+                          )
+                        : Icon(CupertinoIcons.book_fill,
+                            color: accent.withValues(alpha: 0.6)),
+                  ),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  // Rasm 4:3 landshaft nisbatida to'liq ko'rinadi —
-                  // avvalgi pastki ko'k panel rasmning katta qismini
-                  // yopib turar edi, endi sinf belgisi kichik badge
-                  // sifatida rasm USTIDA (yuqorida) ko'rsatiladi.
-                  child: AspectRatio(
-                    aspectRatio: 4 / 3,
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: (widget.subject.imageUz.isNotEmpty
-                                      ? 'https://api.iqmath.uz${widget.subject.imageUz}'
-                                      : '')
-                                  .startsWith('http')
-                              ? Image.network(
-                                  widget.subject.imageUz.isNotEmpty
-                                      ? 'https://api.iqmath.uz${BaseFunctions.getLanguageText(
-                                          languageCode: appState.appLocale,
-                                          uz: widget.subject.imageUz,
-                                          ru: widget.subject.imageRu,
-                                        )}'
-                                      : '',
-                                  fit: BoxFit.cover,
-                                  loadingBuilder:
-                                      (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return const Center(
-                                      child: CupertinoActivityIndicator(),
-                                    );
-                                  },
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return _buildFallbackIcon(
-                                        screenHeight, buttonGradient);
-                                  },
-                                )
-                              : _buildFallbackIcon(screenHeight, buttonGradient),
-                        ),
-
-                        if (!widget.subject.hasTakenDiagnostic)
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: _buildNewBadge(),
-                          ),
-
-                        // Sinf + fan nomi — Fanlar sahifasidagi bilan bir xil
-                        Positioned(
-                          left: 10,
-                          right: 10,
-                          top: 10,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(colors: buttonGradient),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  widget.gradeLabel,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 9,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.35),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.5),
-                                  ),
-                                ),
-                                child: Text(
-                                  BaseFunctions.getLanguageText(
-                                    languageCode: appState.appLocale,
-                                    uz: widget.subject.nameUz,
-                                    ru: widget.subject.nameRu,
-                                  ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(6, 10, 6, 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Sinf, fan nomi va strelka
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  gradeLabel,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    fontSize: 13.5,
+                                    fontSize: 15.5,
                                     fontWeight: FontWeight.w800,
-                                    color: Color(0xFF191C1D),
+                                    color: kSubjectTitleColor,
+                                    height: 1.15,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (widget.subject.hasTakenDiagnostic) ...[
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: widget.refreshOnTap,
-                    onTapDown: (_) => setState(() => _isRefreshPressed = true),
-                    onTapUp: (_) {
-                      setState(() => _isRefreshPressed = false);
-                      HapticFeedback.lightImpact();
-                    },
-                    onTapCancel: () =>
-                        setState(() => _isRefreshPressed = false),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      height: 32,
-                      width: 32,
-                      decoration: BoxDecoration(
-                        color: _isRefreshPressed
-                            ? CupertinoColors.systemGrey5
-                            : CupertinoColors.systemGrey6,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _isRefreshPressed
-                                ? buttonGradient[0].withOpacity(0.2)
-                                : CupertinoColors.systemGrey.withOpacity(0.1),
-                            blurRadius: _isRefreshPressed ? 8 : 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        CupertinoIcons.refresh_thick,
-                        size: 16,
-                        color: buttonGradient[0],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: widget.eyeOnTap,
-                    onTapDown: (_) => setState(() => _isEyePressed = true),
-                    onTapUp: (_) {
-                      setState(() => _isEyePressed = false);
-                      HapticFeedback.lightImpact();
-                    },
-                    onTapCancel: () => setState(() => _isEyePressed = false),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      height: 32,
-                      width: 32,
-                      decoration: BoxDecoration(
-                        color: _isEyePressed
-                            ? CupertinoColors.systemGrey5
-                            : CupertinoColors.systemGrey6,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _isEyePressed
-                                ? buttonGradient[0].withOpacity(0.2)
-                                : CupertinoColors.systemGrey.withOpacity(0.1),
-                            blurRadius: _isEyePressed ? 8 : 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        CupertinoIcons.eye_fill,
-                        size: 16,
-                        color: buttonGradient[0],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Container(
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.systemGrey5,
-                        borderRadius: BorderRadius.circular(3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: CupertinoColors.systemGrey.withOpacity(0.05),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      child: FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: progress / 100,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: progressGradient,
+                                const SizedBox(height: 2),
+                                Text(
+                                  name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF5B6478),
+                                  ),
+                                ),
+                              ],
                             ),
-                            borderRadius: BorderRadius.circular(3),
-                            boxShadow: [
-                              BoxShadow(
-                                color: progressGradient[0].withOpacity(0.3),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '$progress%',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: progressGradient[0],
-                    ),
-                  ),
-                ],
-              ),
-            ] else ...[
-              GestureDetector(
-                onTapDown: (_) {
-                  setState(() => _isStartPressed = true);
-                  _controller.forward();
-                },
-                onTapUp: (_) {
-                  setState(() => _isStartPressed = false);
-                  _controller.reverse();
-                  HapticFeedback.mediumImpact();
-                  widget.onTap();
-                },
-                onTapCancel: () {
-                  setState(() => _isStartPressed = false);
-                  _controller.reverse();
-                },
-                child: ScaleTransition(
-                  scale: _scaleAnimation,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _isStartPressed
-                              ? buttonGradient[0].withOpacity(0.2)
-                              : CupertinoColors.systemGrey.withOpacity(0.1),
-                          blurRadius: _isStartPressed ? 12 : 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            CupertinoIcons.play_fill,
-                            size: 14,
-                            color: buttonGradient[0],
                           ),
                           const SizedBox(width: 6),
+                          Container(
+                            width: 30,
+                            height: 30,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: widget.theme.soft,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(CupertinoIcons.arrow_right,
+                                size: 14, color: accent),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Natija qatori
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: taken ? score / 100 : 0,
+                                minHeight: 6,
+                                backgroundColor: kSubjectTrackColor,
+                                valueColor: AlwaysStoppedAnimation(color),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Text(
-                            DiagnosticsLocalization.get('start', widget.locale),
+                            taken ? '$score%' : '—',
                             style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: buttonGradient[0],
-                              letterSpacing: -0.2,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: taken ? color : const Color(0xFFA0A8BA),
                             ),
                           ),
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 8),
+
+                      // Ma'lumot (2 qator)
+                      if (taken) ...[
+                        _info(
+                          CupertinoIcons.calendar,
+                          accent,
+                          _t('lastTaken', {'date': subject.lastTakenAt ?? '—'}),
+                        ),
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Flexible(
+                              flex: 3,
+                              child: _info(
+                                Icons.track_changes_rounded,
+                                const Color(0xFFF59E0B),
+                                _t('weakTopics',
+                                    {'count': subject.weakTopicsCount}),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              flex: 2,
+                              child: _info(
+                                Icons.refresh_rounded,
+                                accent,
+                                _t('attempts', {
+                                  'count': math.max(1, subject.attemptsCount)
+                                }),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ] else ...[
+                        Text(
+                          _t('notTaken'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF5B6478),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _t('notTakenHint'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: kSubjectMutedColor,
+                          ),
+                        ),
+                      ],
+                      const Spacer(),
+                      const SizedBox(height: 10),
+
+                      // Tugmalar
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 36,
+                              child: ElevatedButton.icon(
+                                onPressed:
+                                    taken ? widget.onResults : widget.onStart,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: accent,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  textStyle: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                icon: Icon(
+                                  taken
+                                      ? Icons.bar_chart_rounded
+                                      : Icons.play_arrow_rounded,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  taken ? _t('myResults') : _t('start'),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (taken) ...[
+                            const SizedBox(width: 6),
+                            Tooltip(
+                              message: _t('retake'),
+                              child: InkWell(
+                                onTap: widget.onStart,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: widget.theme.soft,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(Icons.refresh_rounded,
+                                      size: 18, color: accent),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
             ],
-          ],
-        );
-      },
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildNewBadge() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: CupertinoColors.activeBlue,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: CupertinoColors.white.withOpacity(0.3),
-              width: 1.5,
+  Widget _info(IconData icon, Color color, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: color),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: kSubjectMutedColor,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                CupertinoIcons.sparkles,
-                size: 12,
-                color: CupertinoColors.white,
-              ),
-              SizedBox(width: 4),
-              Text(
-                DiagnosticsLocalization.get('new', widget.locale),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: CupertinoColors.white,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildFallbackIcon(double screenHeight, List<Color> colors) {
-    return Center(
-      child: Container(
-        width: screenHeight * 0.1,
-        height: screenHeight * 0.1,
-        decoration: BoxDecoration(
-          color: colors[0].withOpacity(0.15),
-          borderRadius: BorderRadius.circular(screenHeight * 0.05),
-        ),
-        child: Icon(
-          CupertinoIcons.book_fill,
-          size: screenHeight * 0.045,
-          color: colors[0],
-        ),
-      ),
+      ],
     );
   }
 }

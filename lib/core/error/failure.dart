@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../device/device_model.dart';
+
 abstract class Failure extends Equatable {}
 
 class ServerFailure extends Failure {
@@ -15,6 +17,15 @@ class ServerFailure extends Failure {
 class NoInternetFailure extends Failure {
   @override
   List<Object?> get props => [];
+}
+
+class DeviceLimitFailure extends Failure {
+  final DeviceLimitInfo info;
+
+  DeviceLimitFailure(this.info);
+
+  @override
+  List<Object?> get props => [info];
 }
 
 class CacheFailure extends Failure {

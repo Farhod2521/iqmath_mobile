@@ -7,7 +7,31 @@ class LocalSource {
   LocalSource(this.box);
 
   Future<void> clear() async {
+    // Qurilma identifikatori saqlanadi — aks holda keyingi kirish yangi
+    // qurilma deb hisoblanadi va 2 ta qurilma cheklovida joy egallaydi.
+    final deviceId = getDeviceId();
+    final deviceRevoked = getDeviceRevoked();
     await box.clear();
+    if (deviceId != null && deviceId.isNotEmpty) setDeviceId(deviceId);
+    if (deviceRevoked) setDeviceRevoked(true);
+  }
+
+  void setDeviceId(String deviceId) {
+    box.put(AppKeys.DEVICE_ID, deviceId);
+  }
+
+  String? getDeviceId() {
+    return box.get(AppKeys.DEVICE_ID);
+  }
+
+  /// Qurilma boshqa qurilmadan "Qurilmalar" bo'limi orqali chiqarib
+  /// yuborilganini login sahifasida bir marta ko'rsatish uchun belgi.
+  void setDeviceRevoked(bool value) {
+    box.put(AppKeys.DEVICE_REVOKED, value);
+  }
+
+  bool getDeviceRevoked() {
+    return box.get(AppKeys.DEVICE_REVOKED) ?? false;
   }
 
   void setForceUpdate(bool forceUpdate) {

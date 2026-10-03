@@ -10,7 +10,11 @@ import 'package:my_flutter_template/features/auth/data/models/register_request_m
 import 'package:my_flutter_template/features/auth/data/models/register_response_model.dart';
 import 'package:dio/dio.dart';
 
+import '../../../../../core/device/device_identity.dart';
+import '../../../../../core/device/device_model.dart';
 import '../../../../../core/error/exceptions.dart';
+import '../../../../../core/local_source/local_source.dart';
+import '../../../../../injector_container.dart';
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final Dio dio;
@@ -30,7 +34,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final response = await dio.post(
         "${Constants.authUrl}${reset ? Urls.RESET : Urls.CONFIRM}",
         options: requestOptions,
-        data: confirmRequestModel.toJson(),
+        data: {
+          ...confirmRequestModel.toJson(),
+          ...DeviceIdentity.credentials(sl<LocalSource>()),
+        },
       );
       if ((response.statusCode ?? 500) >= 200 &&
           (response.statusCode ?? 500) < 300) {
@@ -55,7 +62,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final response = await dio.post(
         "${Constants.authUrl}${Urls.LOGIN}",
         options: requestOptions,
-        data: loginRequestModel.toJson(),
+        data: {
+          ...loginRequestModel.toJson(),
+          ...DeviceIdentity.credentials(sl<LocalSource>()),
+        },
       );
       if ((response.statusCode ?? 500) >= 200 &&
           (response.statusCode ?? 500) < 300) {
@@ -68,6 +78,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
         return LoginResponseModel();
+      }
+      // 2 ta qurilma chegarasi — foydalanuvchi qurilmalardan birini tanlaydi
+      if (e.response?.statusCode == 409 &&
+          DeviceLimitInfo.matches(e.response?.data)) {
+        throw DeviceLimitException(DeviceLimitInfo.fromJson(
+            Map<String, dynamic>.from(e.response!.data as Map)));
       }
       if (e.response == null) {
         throw NoInternetException();

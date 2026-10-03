@@ -22,7 +22,10 @@ class SubjectResponse {
       bool? isOpen,
       bool? isDiagnostOpen,
       num? topicsCount,
-      num? questionsCount,}){
+      num? questionsCount,
+      num? progress,
+      num? completedTopics,
+      num? inProgressTopics,}){
     _id = id;
     _nameUz = nameUz;
     _nameRu = nameRu;
@@ -35,6 +38,9 @@ class SubjectResponse {
     _isDiagnostOpen = isDiagnostOpen;
     _topicsCount = topicsCount;
     _questionsCount = questionsCount;
+    _progress = progress;
+    _completedTopics = completedTopics;
+    _inProgressTopics = inProgressTopics;
 }
 
   SubjectResponse.fromJson(dynamic json) {
@@ -50,6 +56,9 @@ class SubjectResponse {
     _isDiagnostOpen = json['is_diagnost_open'];
     _topicsCount = json['topics_count'];
     _questionsCount = json['questions_count'];
+    _progress = json['progress'];
+    _completedTopics = json['completed_topics'];
+    _inProgressTopics = json['in_progress_topics'];
   }
   num? _id;
   String? _nameUz;
@@ -63,6 +72,9 @@ class SubjectResponse {
   bool? _isDiagnostOpen;
   num? _topicsCount;
   num? _questionsCount;
+  num? _progress;
+  num? _completedTopics;
+  num? _inProgressTopics;
 SubjectResponse copyWith({  num? id,
   String? nameUz,
   String? nameRu,
@@ -75,6 +87,9 @@ SubjectResponse copyWith({  num? id,
   bool? isDiagnostOpen,
   num? topicsCount,
   num? questionsCount,
+  num? progress,
+  num? completedTopics,
+  num? inProgressTopics,
 }) => SubjectResponse(  id: id ?? _id,
   nameUz: nameUz ?? _nameUz,
   nameRu: nameRu ?? _nameRu,
@@ -87,6 +102,9 @@ SubjectResponse copyWith({  num? id,
   isDiagnostOpen: isDiagnostOpen ?? _isDiagnostOpen,
   topicsCount: topicsCount ?? _topicsCount,
   questionsCount: questionsCount ?? _questionsCount,
+  progress: progress ?? _progress,
+  completedTopics: completedTopics ?? _completedTopics,
+  inProgressTopics: inProgressTopics ?? _inProgressTopics,
 );
   num? get id => _id;
   String? get nameUz => _nameUz;
@@ -100,6 +118,9 @@ SubjectResponse copyWith({  num? id,
   bool? get isDiagnostOpen => _isDiagnostOpen;
   num? get topicsCount => _topicsCount;
   num? get questionsCount => _questionsCount;
+  num? get progress => _progress;
+  num? get completedTopics => _completedTopics;
+  num? get inProgressTopics => _inProgressTopics;
 
   Map<String, dynamic> toJson() {
     final map = <String, dynamic>{};
@@ -115,6 +136,9 @@ SubjectResponse copyWith({  num? id,
     map['is_diagnost_open'] = _isDiagnostOpen;
     map['topics_count'] = _topicsCount;
     map['questions_count'] = _questionsCount;
+    map['progress'] = _progress;
+    map['completed_topics'] = _completedTopics;
+    map['in_progress_topics'] = _inProgressTopics;
     return map;
   }
 

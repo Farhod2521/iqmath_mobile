@@ -1,3 +1,5 @@
+import '../device/device_model.dart';
+
 class ServerException implements Exception {
   final String title;
   final String message;
@@ -105,6 +107,13 @@ class ServerException implements Exception {
 }
 
 class NoInternetException implements Exception {}
+
+/// Login: o'quvchining faol qurilmalari soni chegarasiga yetildi (HTTP 409).
+class DeviceLimitException implements Exception {
+  final DeviceLimitInfo info;
+
+  DeviceLimitException(this.info);
+}
 
 class CacheException implements Exception {
   final String message;

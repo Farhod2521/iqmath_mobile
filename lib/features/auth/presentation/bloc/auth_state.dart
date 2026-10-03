@@ -15,6 +15,7 @@ class AuthState extends Equatable {
   final ({String title, String message})? errorMessage;
   final ConfirmResponseEntity? confirmResponseEntity;
   final String? role;
+  final DeviceLimitInfo? deviceLimit;
 
   const AuthState({
     this.status = AuthStatus.phoneNumber,
@@ -31,6 +32,7 @@ class AuthState extends Equatable {
     this.errorMessage,
     this.confirmResponseEntity,
     this.role,
+    this.deviceLimit,
   });
 
   AuthState copyWith({
@@ -48,6 +50,7 @@ class AuthState extends Equatable {
     String? smsId,
     ConfirmResponseEntity? confirmResponseEntity,
     String? role,
+    DeviceLimitInfo? deviceLimit,
   }) {
     return AuthState(
       status: status ?? this.status,
@@ -65,6 +68,7 @@ class AuthState extends Equatable {
       confirmResponseEntity:
           confirmResponseEntity ?? this.confirmResponseEntity,
       role: role ?? this.role,
+      deviceLimit: deviceLimit ?? this.deviceLimit,
     );
   }
 
@@ -84,10 +88,11 @@ class AuthState extends Equatable {
         registerStatus,
         confirmResponseEntity,
         role,
+        deviceLimit,
       ];
 }
 
-enum AuthStateStatus { initial, loading, success, error }
+enum AuthStateStatus { initial, loading, success, error, deviceLimit }
 
 enum AuthRegisterStatus { initial, loading, success, error }
 
@@ -123,6 +128,8 @@ extension AuthStateStatusX on AuthStateStatus {
   bool get isSuccess => this == AuthStateStatus.success;
 
   bool get isError => this == AuthStateStatus.error;
+
+  bool get isDeviceLimit => this == AuthStateStatus.deviceLimit;
 }
 
 extension AuthStatusX on AuthStatus {

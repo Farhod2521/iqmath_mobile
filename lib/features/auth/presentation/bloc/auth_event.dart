@@ -17,13 +17,17 @@ class AuthLoginEvent extends AuthEvent {
   final String phoneNumber;
   final String password;
 
+  /// Qurilmalar chegarasida tanlangan, chiqarib yuboriladigan qurilma.
+  final String? replaceDeviceId;
+
   const AuthLoginEvent({
     required this.phoneNumber,
     required this.password,
+    this.replaceDeviceId,
   });
 
   @override
-  List<Object?> get props => [phoneNumber, password];
+  List<Object?> get props => [phoneNumber, password, replaceDeviceId];
 }
 
 class AuthRegisterEvent extends AuthEvent {

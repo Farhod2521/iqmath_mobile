@@ -63,6 +63,8 @@ import '../features/profile/presentation/blocs/faq/faq_bloc.dart';
 import '../features/profile/presentation/blocs/profile/profile_bloc.dart';
 import '../features/profile/presentation/pages/coupon_users_page.dart';
 import '../features/profile/presentation/pages/faq_page.dart';
+import '../features/profile/presentation/pages/devices_page.dart';
+import '../features/diagnostics/presentation/pages/diagnostic_results_page.dart';
 import '../features/screen_lock/presentation/page_args/screen_lock_args.dart';
 import '../features/splash/presentation/bloc/splash_bloc.dart';
 import '../features/splash/presentation/pages/onboarding_page.dart';
@@ -295,6 +297,16 @@ class AppRoutes {
             builder: (_) => BlocProvider(
               create: (context) => FaqBloc(sl<GetFaqUseCase>()),
               child: const FAQPage(),
+            ),
+          ),
+        Routes.devices => CupertinoPageRoute(
+            settings: settings,
+            builder: (_) => const DevicesPage(),
+          ),
+        Routes.diagnosticResults => CupertinoPageRoute(
+            settings: settings,
+            builder: (_) => DiagnosticResultsPage(
+              args: settings.arguments as DiagnosticResultsArgs,
             ),
           ),
         Routes.security => CupertinoPageRoute(

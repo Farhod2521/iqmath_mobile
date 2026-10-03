@@ -70,6 +70,8 @@ class AuthRepositoryImpl extends AuthRepository {
           loginRequestEntity.toModel,
         );
         return Right(result.toEntity);
+      } on DeviceLimitException catch (e) {
+        return Left(DeviceLimitFailure(e.info));
       } on ServerException catch (e) {
         return Left(
           ServerFailure(

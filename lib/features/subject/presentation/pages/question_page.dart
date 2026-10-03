@@ -2476,6 +2476,7 @@
 // }
 
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -2492,6 +2493,9 @@ import 'package:flutter_math_fork/flutter_math.dart';
 
 import '../../../../core/local_source/local_source.dart';
 import '../../../../injector_container.dart';
+import '../../../../router/name_routes.dart';
+import '../../../diagnostics/presentation/diagnostic_texts.dart';
+import '../../../diagnostics/presentation/pages/diagnostic_results_page.dart';
 import '../../../home/presentation/pages/home_parent/widget/parent_assimilation_page.dart';
 
 class QuestionPage extends StatefulWidget {
@@ -3495,162 +3499,297 @@ class _QuestionPageState extends State<QuestionPage> with QuestionMixin {
     );
   }
 
+  /// Diagnostika testi natijasi — saytdagi DiagnosticResultModal:
+  /// natija kartasi va "Qayta topshirish" / "Natijalarim" tugmalari.
   void _showSimpleResultsDialog(
       int totalQuestions, int correctCount, double percentage, String? locale) {
     if (!mounted) return;
 
-    final score = percentage.toInt();
+    final percent = percentage.round();
+    final wrongCount = math.max(totalQuestions - correctCount, 0);
+    String t(String key, [Map<String, Object>? args]) =>
+        DiagnosticTexts.get(locale, key, args);
+
+    void retake(BuildContext dialogContext) {
+      Navigator.of(dialogContext).pop();
+      setState(() {
+        _currentQuestionIndex = 0;
+        _answers.clear();
+        _visitedQuestions.clear();
+        _visitedQuestions.add(0);
+        _isLoading = true;
+      });
+      _loadQuestions();
+    }
+
+    void openResults(BuildContext dialogContext) {
+      Navigator.of(dialogContext).pop();
+      Navigator.of(context).pushReplacementNamed(
+        Routes.diagnosticResults,
+        arguments: DiagnosticResultsArgs(
+          subjectId: widget.arguments.subjectId ?? '',
+          title: widget.arguments.taskName,
+        ),
+      );
+    }
+
+    Widget statRow(IconData icon, Color color, String label, int value) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Icon(icon, size: 17, color: color),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF3B4257)),
+              ),
+            ),
+            Text(
+              '$value ${t('pcs')}',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E2A4A),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => WillPopScope(
-        onWillPop: () async => false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
         child: Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          backgroundColor: Colors.white,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          child: Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-            ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Align(
                   alignment: Alignment.topRight,
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).pop();
+                  child: IconButton(
+                    icon: const Icon(Icons.close_rounded,
+                        size: 26, color: Color(0xFF2C3545)),
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
                       Navigator.of(context).pop();
                     },
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      child: const Icon(
-                        Icons.close,
-                        size: 28,
-                        color: Color(0xFF2C3545),
-                      ),
-                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: 120,
-                  height: 120,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    clipBehavior: Clip.none,
+
+                // Natija kartasi
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFFEEF3FF), Color(0xFFF7FAFF)],
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Positioned(
-                        bottom: -10,
-                        child: SvgPicture.network(
-                            'https://iqmath.uz/icons/award.svg'),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${t('resultCongrats')} 🎉',
+                                  style: const TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF5D87FF),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  t('resultAnswered', {
+                                    'total': totalQuestions,
+                                    'answer': correctCount,
+                                  }),
+                                  style: const TextStyle(
+                                    fontSize: 19,
+                                    height: 1.25,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF1E2A4A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            width: 84,
+                            height: 84,
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: Image.network(
+                              'https://iqmath.uz/images/kubik.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.emoji_events_rounded,
+                                color: Color(0xFFF59E0B),
+                                size: 40,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        t('resultLabel'),
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF8A93A6),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Container(
+                            width: 112,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE0EAFF),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '$percent%',
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF3758F9),
+                                  ),
+                                ),
+                                Text(
+                                  t('resultPercentLabel'),
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF5C6A93),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.7),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  statRow(Icons.check_circle_outline_rounded,
+                                      const Color(0xFF10B981),
+                                      t('resultCorrectAnswers'), correctCount),
+                                  statRow(Icons.cancel_outlined,
+                                      const Color(0xFFF43F5E),
+                                      t('resultWrongAnswers'), wrongCount),
+                                  statRow(Icons.description_outlined,
+                                      const Color(0xFF5D87FF),
+                                      t('resultTotalQuestions'), totalQuestions),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 14),
                 Text(
-                  '${QuestionPageTranslations.t('yourScore', locale)} $correctCount',
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1C2A3A),
-                    letterSpacing: 0.5,
-                  ),
+                  t('satisfiedQuestion'),
                   textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  QuestionPageTranslations.t('youAnswered', locale, params: {
-                    'total': totalQuestions,
-                    'correct': correctCount
-                  }),
                   style: const TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF64748B),
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w500,
-                    height: 1.5,
+                    color: Color(0xFF8A93A6),
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  '${QuestionPageTranslations.t('yourResult', locale)}: ${percentage.toInt()}%',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(
                       child: SizedBox(
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            setState(() {
-                              _currentQuestionIndex = 0;
-                              _answers.clear();
-                              _visitedQuestions.clear();
-                              _visitedQuestions.add(0);
-                              _isLoading = true;
-                            });
-                            _loadQuestions();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2196F3),
-                            foregroundColor: Colors.white,
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: () => retake(dialogContext),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF3758F9),
+                            side: const BorderSide(color: Color(0xFFD6DEEC)),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            elevation: 0,
-                            shadowColor: Colors.transparent,
-                          ),
-                          child: Text(
-                            QuestionPageTranslations.t('retake', locale),
-                            style: const TextStyle(
-                              fontSize: 16,
+                            textStyle: const TextStyle(
+                              fontSize: 13.5,
                               fontWeight: FontWeight.w600,
-                              letterSpacing: 0.3,
                             ),
                           ),
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          label: Text(t('retake'),
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: SizedBox(
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            Navigator.of(context).pop(true);
-                          },
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: () => openResults(dialogContext),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4CAF50),
+                            backgroundColor: const Color(0xFF3758F9),
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
                             elevation: 0,
-                            shadowColor: Colors.transparent,
-                          ),
-                          child: Text(
-                            QuestionPageTranslations.t(
-                                'recommendation', locale),
-                            style: const TextStyle(
-                              fontSize: 16,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 13.5,
                               fontWeight: FontWeight.w600,
-                              letterSpacing: 0.3,
                             ),
                           ),
+                          icon: const Icon(Icons.description_outlined,
+                              size: 18),
+                          label: Text(t('myResults'),
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
                         ),
                       ),
                     ),

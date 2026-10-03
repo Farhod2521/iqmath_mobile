@@ -5,6 +5,7 @@ import 'package:gap/gap.dart';
 import 'package:flutter/services.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import '../../../../core/app_bloc/app_bloc.dart';
+import '../../../../core/device/device_widgets.dart';
 import '../../../../core/local_source/local_source.dart';
 import '../../../../core/widgets/custom_loading_indicator.dart';
 import '../../../../core/widgets/top_notification.dart';
@@ -52,6 +53,7 @@ class _AuthPageState extends State<AuthPage> with AuthPageMixin {
   String? selectedRole;
   int? selectedGrade;
   bool _obscurePassword = true;
+  bool _deviceSheetOpen = false;
   bool _rememberMe = false;
   String? _phoneError;
   String? _passwordError;
@@ -78,6 +80,21 @@ class _AuthPageState extends State<AuthPage> with AuthPageMixin {
     fullNameController = TextEditingController();
     setPhonePassword();
     super.initState();
+
+    // Bu qurilma boshqa qurilmadan "Qurilmalar" bo'limi orqali chiqarib
+    // yuborilgan bo'lsa — sababini bir marta ko'rsatamiz
+    final localSource = sl<LocalSource>();
+    if (localSource.getDeviceRevoked()) {
+      localSource.setDeviceRevoked(false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        TopNotification.showError(
+          context,
+          message: DeviceTexts.get(
+              context.read<AppBloc>().state.appLocale, 'revoked'),
+        );
+      });
+    }
 
     _phoneFocusNode.addListener(() {
       if (!_phoneFocusNode.hasFocus) {
@@ -445,6 +462,21 @@ class _AuthPageState extends State<AuthPage> with AuthPageMixin {
 
         return BlocListener<AuthBloc, AuthState>(
           listener: (context, state) {
+            // 2 ta qurilma chegarasi — qurilmani tanlash oynasi (ochiq bo'lsa
+            // uning o'zi yangi ro'yxatni oladi)
+            if (state.stateStatus.isDeviceLimit &&
+                state.deviceLimit != null &&
+                !_deviceSheetOpen) {
+              _deviceSheetOpen = true;
+              DeviceLimitSheet.show(
+                context,
+                bloc: context.read<AuthBloc>(),
+                info: state.deviceLimit!,
+                phoneNumber: phoneController.text,
+                password: passwordController.text,
+                locale: locale,
+              ).whenComplete(() => _deviceSheetOpen = false);
+            }
             if (state.stateStatus.isSuccess) {
               TopNotification.showSuccess(
                 context,
