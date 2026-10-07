@@ -9,6 +9,19 @@ mixin BaseBlocMixin {
         title: failure.title,
         message: failure.message,
       );
+    } else if (failure is DeviceLimitFailure) {
+      // Login sahifasi bu holatda qurilma tanlash oynasini ochadi; boshqa joylarda matn ko'rsatiladi
+      return (
+        title: 'Xatolik',
+        message:
+            "Siz bir vaqtda ko'pi bilan ${failure.info.maxDevices} ta qurilmadan foydalana olasiz. "
+                "Davom etish uchun qurilmalardan birini chiqarib yuboring.",
+      );
+    } else if (failure is NoInternetFailure) {
+      return (
+        title: 'Xatolik',
+        message: "Internet aloqasi yo'q. Tarmoqni tekshirib, qayta urinib ko'ring.",
+      );
     } else if (failure is CacheFailure) {
       return (
         title: failure.title,

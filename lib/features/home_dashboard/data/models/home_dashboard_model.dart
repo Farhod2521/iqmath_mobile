@@ -148,12 +148,49 @@ class RecentActivityItemModel {
       locale == 'ru' ? subjectNameRu : subjectNameUz;
 }
 
+/// Bosh sahifa yuqori paneli: ism, streak, ball, daraja, kunlik maqsad
+class HomeHeaderModel {
+  final String firstName;
+  final int streakDays;
+  final int score;
+  final int coin;
+  final int level;
+  final int dailyDone;
+  final int dailyTarget;
+
+  const HomeHeaderModel({
+    required this.firstName,
+    required this.streakDays,
+    required this.score,
+    required this.coin,
+    required this.level,
+    required this.dailyDone,
+    required this.dailyTarget,
+  });
+
+  static int _int(dynamic value) => (value as num?)?.toInt() ?? 0;
+
+  factory HomeHeaderModel.fromJson(Map<String, dynamic> json) {
+    final goal = json['daily_goal'] is Map ? json['daily_goal'] as Map : const {};
+    return HomeHeaderModel(
+      firstName: json['first_name']?.toString() ?? '',
+      streakDays: _int(json['streak_days']),
+      score: _int(json['score']),
+      coin: _int(json['coin']),
+      level: _int(json['level']),
+      dailyDone: _int(goal['done']),
+      dailyTarget: _int(goal['target']) == 0 ? 5 : _int(goal['target']),
+    );
+  }
+}
+
 class HomeDashboardModel {
   final List<ClassOptionModel> classes;
   final String currentClassName;
   final ContinueLearningModel? continueLearning;
   final HomeStatsModel stats;
   final List<RecentActivityItemModel> recentActivity;
+  final HomeHeaderModel? header;
 
   HomeDashboardModel({
     required this.classes,
@@ -161,6 +198,7 @@ class HomeDashboardModel {
     required this.continueLearning,
     required this.stats,
     required this.recentActivity,
+    this.header,
   });
 
   factory HomeDashboardModel.fromJson(Map<String, dynamic> json) {
@@ -182,6 +220,9 @@ class HomeDashboardModel {
           .whereType<Map<String, dynamic>>()
           .map(RecentActivityItemModel.fromJson)
           .toList(),
+      header: data['header'] is Map<String, dynamic>
+          ? HomeHeaderModel.fromJson(data['header'] as Map<String, dynamic>)
+          : null,
     );
   }
 }

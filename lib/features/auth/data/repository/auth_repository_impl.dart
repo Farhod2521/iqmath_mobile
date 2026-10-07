@@ -39,6 +39,9 @@ class AuthRepositoryImpl extends AuthRepository {
           reset,
         );
         return Right(result.toEntity);
+      } on DeviceLimitException catch (e) {
+        // SMS tasdiqlashda ham qurilma chegarasi bo'lishi mumkin
+        return Left(DeviceLimitFailure(e.info));
       } on ServerException catch (e) {
         return Left(
           ServerFailure(

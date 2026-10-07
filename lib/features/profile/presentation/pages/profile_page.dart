@@ -9,6 +9,8 @@ import 'package:my_flutter_template/core/local_source/local_source.dart';
 import 'package:my_flutter_template/features/auth/presentation/page_args/auth_args.dart';
 import 'package:my_flutter_template/features/profile/presentation/arguments/edit_profile_page_args.dart';
 import 'package:my_flutter_template/injector_container.dart';
+import 'package:my_flutter_template/core/widgets/student_stats_card.dart';
+import 'package:my_flutter_template/features/home_dashboard/domain/usecases/get_home_dashboard_usecase.dart';
 import '../../../../core/app_bloc/app_bloc.dart';
 import '../../../../core/device/device_widgets.dart';
 import '../../../../router/app_routes.dart';
@@ -83,11 +85,22 @@ class _ProfilePageState extends State<ProfilePage> {
   int _coin = 0;
   int _sum = 0;
   bool _statsLoading = true;
+  int? _streak; // bosh sahifa API'sidagi header'dan
 
   @override
   void initState() {
     super.initState();
     _fetchMyScore();
+    _fetchStreak();
+  }
+
+  Future<void> _fetchStreak() async {
+    final result = await sl<GetHomeDashboardUseCase>()(GetHomeDashboardParams());
+    if (!mounted) return;
+    result.fold(
+      (_) => setState(() => _streak = 0),
+      (data) => setState(() => _streak = data.header?.streakDays ?? 0),
+    );
   }
 
   Future<void> _fetchMyScore() async {
@@ -140,8 +153,8 @@ class _ProfilePageState extends State<ProfilePage> {
     const uz = {
       'profilInfo': 'Profil ma\'lumotlari',
       'profilInfoSub': 'Ism, telefon raqam va boshqa ma\'lumotlar',
-      'myCourses': 'Kurslarim',
-      'myCoursesSub': 'Ro\'yxatdan o\'tgan kurslar',
+      'myPayments': "To'lovlarim",
+      'myPaymentsSub': "Obuna to'lovlari va cheklar",
       'certificates': 'Sertifikatlarim',
       'certificatesSub': 'Olingan sertifikatlar',
       'logout': 'Ilovadan chiqish',
@@ -167,8 +180,8 @@ class _ProfilePageState extends State<ProfilePage> {
     const ru = {
       'profilInfo': 'Информация профиля',
       'profilInfoSub': 'Имя, номер телефона и другая информация',
-      'myCourses': 'Мои курсы',
-      'myCoursesSub': 'Записанные курсы',
+      'myPayments': 'Мои платежи',
+      'myPaymentsSub': 'Оплаты подписки и чеки',
       'certificates': 'Мои сертификаты',
       'certificatesSub': 'Полученные сертификаты',
       'logout': 'Выйти из приложения',
@@ -332,7 +345,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 _buildHeader(locale, fullName, phone, initial),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: _buildStatsRow(),
+                  child: StudentStatsCard(
+                    locale: locale,
+                    streak: _streak,
+                    score: _statsLoading ? null : _score,
+                    coin: _statsLoading ? null : _coin,
+                    sum: _statsLoading ? null : _sum,
+                    onTap: () => _openRoute(Routes.balls),
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -351,12 +371,12 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         _divider(),
                         _menuRow(
-                          icon: Icons.menu_book_rounded,
-                          iconColor: const Color(0xFF8B5CF6),
-                          iconBg: const Color(0xFFF3E8FF),
-                          title: _t(locale, 'myCourses'),
-                          subtitle: _t(locale, 'myCoursesSub'),
-                          onTap: _showComingSoon,
+                          icon: Icons.receipt_long_rounded,
+                          iconColor: const Color(0xFF16A34A),
+                          iconBg: const Color(0xFFE7F8EF),
+                          title: _t(locale, 'myPayments'),
+                          subtitle: _t(locale, 'myPaymentsSub'),
+                          onTap: () => _openRoute(Routes.payments),
                         ),
                         _divider(),
                         _menuRow(
@@ -680,83 +700,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
               child: const Icon(Icons.edit_rounded, size: 12, color: _kPrimary),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------
-  // Ball / Tanga / So'm — real hisobdagi qiymatlar (my-score/ API)
-  // ---------------------------------------------------------------------
-  Widget _buildStatsRow() {
-    return GestureDetector(
-      onTap: () => _openRoute(Routes.balls),
-      child: Row(
-        children: [
-          Expanded(
-            child: _statPill(
-              emoji: '🪙',
-              value: _statsLoading ? '…' : '$_sum',
-              label: "So'm",
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _statPill(
-              emoji: '🎲',
-              value: _statsLoading ? '…' : '$_coin',
-              label: 'Tanga',
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _statPill(
-              emoji: '⭐',
-              value: _statsLoading ? '…' : '$_score',
-              label: 'Ball',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _statPill({
-    required String emoji,
-    required String value,
-    required String label,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0E1A4C).withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 15)),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              '$value $label',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: _kInk,
-              ),
             ),
           ),
         ],

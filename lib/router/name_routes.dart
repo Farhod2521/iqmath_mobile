@@ -18,6 +18,7 @@ class Routes {
   static const faq = '/faq';
   static const security = '/security';
   static const devices = '/devices';
+  static const payments = '/payments';
   static const diagnosticResults = '/diagnostic-results';
   static const wantRestaurant = '/want_restaurant';
   static const photoView = '/photo_view';

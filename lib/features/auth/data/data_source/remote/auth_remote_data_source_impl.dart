@@ -43,6 +43,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           (response.statusCode ?? 500) < 300) {
         log("Data: ${response.data['data']}");
         return ConfirmResponseModel.fromJson(response.data);
+      } else if (response.statusCode == 409 &&
+          DeviceLimitInfo.matches(response.data)) {
+        throw DeviceLimitException(DeviceLimitInfo.fromJson(
+            Map<String, dynamic>.from(response.data as Map)));
       } else {
         throw ServerException.fromJson(response.data);
       }
@@ -51,6 +55,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         throw NoInternetException();
       }
       throw ServerException.fromJson(e.response?.data);
+    } on DeviceLimitException {
+      rethrow;
+    } on ServerException {
+      rethrow;
     } catch (e) {
       throw ServerException(message: e.toString(), title: 'Error');
     }
@@ -72,6 +80,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         return LoginResponseModel.fromJson(response.data);
       } else if ((response.statusCode ?? 500) == 404) {
         return LoginResponseModel();
+      } else if (response.statusCode == 409 &&
+          DeviceLimitInfo.matches(response.data)) {
+        // Dio 4xx javoblarni istisnosiz qaytaradi (validateStatus < 500) —
+        // shuning uchun qurilma chegarasi shu yerda ham tekshiriladi
+        throw DeviceLimitException(DeviceLimitInfo.fromJson(
+            Map<String, dynamic>.from(response.data as Map)));
       } else {
         throw ServerException.fromJson(response.data);
       }
@@ -89,6 +103,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         throw NoInternetException();
       }
       throw ServerException.fromJson(e.response?.data);
+    } on DeviceLimitException {
+      rethrow;
+    } on ServerException {
+      rethrow;
     } catch (e) {
       throw ServerException(message: e.toString(), title: 'Error');
     }

@@ -14,6 +14,7 @@ import 'package:my_flutter_template/injector_container.dart';
 import 'dart:convert';
 
 import '../../../../../core/widgets/appbar_leading_widget.dart';
+import '../../../../../core/widgets/soft_back_button.dart';
 import '../../../../../core/widgets/custom_animation_effects.dart';
 import '../../../../../core/widgets/custom_loading_indicator.dart';
 import '../../../../../core/widgets/custom_sliver_pull_refresh.dart';
@@ -280,8 +281,20 @@ class _NotificationPageState extends State<NotificationPage>
         final strings = NotificationPageStrings.getStrings(locale);
         return Scaffold(
           appBar: AppBar(
-            leading: SizedBox.shrink(),
-            title: Text(localization.notification),
+            leadingWidth: 72,
+            leading: const Padding(
+              padding: EdgeInsets.only(left: 16),
+              child: Center(child: SoftBackButton(size: 44)),
+            ),
+            titleSpacing: 4,
+            title: Text(
+              localization.notification,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0F172A),
+              ),
+            ),
           ),
           body: _isLoading
               ? const Center(child: CustomLoadingIndicator())

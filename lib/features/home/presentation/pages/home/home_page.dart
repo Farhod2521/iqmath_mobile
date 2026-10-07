@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:my_flutter_template/core/local_source/local_source.dart';
 import 'package:my_flutter_template/core/app_bloc/app_bloc.dart';
 import 'package:my_flutter_template/features/home_dashboard/data/models/home_dashboard_model.dart';
 import 'package:my_flutter_template/features/home_dashboard/domain/usecases/get_home_dashboard_usecase.dart';
@@ -10,6 +11,7 @@ import 'package:my_flutter_template/features/subject/data/models/topic_model.dar
 import 'package:my_flutter_template/features/subject/presentation/widget/topic_card.dart'
     show QuestionPageArguments;
 import 'package:my_flutter_template/generated/assets.dart';
+import 'package:my_flutter_template/features/home/presentation/widgets/notifications_popup.dart';
 import 'package:my_flutter_template/injector_container.dart';
 import 'package:my_flutter_template/router/app_routes.dart';
 import 'package:my_flutter_template/router/name_routes.dart';
@@ -242,84 +244,276 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ---------------------------------------------------------------------------
-  // Yuqori panel: logo + coin / ball / hisob
+  // Yuqori panel: avatar + salomlashuv, bildirishnoma, til va statistika kartasi
   // ---------------------------------------------------------------------------
+  String _h(String locale, String key) {
+    const uz = {
+      'hello': 'Salom,',
+    };
+    const ru = {
+      'hello': 'Привет,',
+    };
+    return (locale == 'ru' ? ru : uz)[key] ?? key;
+  }
+
   Widget _buildTopBar(String locale) {
-    return Row(
-      children: [
-        InkWell(
-          onTap: _openProfile,
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            width: 56,
-            height: 56,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF0E1A4C).withOpacity(0.06),
-                  blurRadius: 14,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Image.asset(Assets.pngLogo, fit: BoxFit.contain),
-          ),
-        ),
-        const SizedBox(width: 12),
-        // Kichik ekranlarda chiplar siqilib sig'sin
-        Expanded(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerRight,
-            child: Row(
+    return FutureBuilder<HomeDashboardModel?>(
+      future: _dashboardFuture,
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        final header = data?.header;
+        final storedName = sl<LocalSource>().getFirstName() ?? '';
+        final name = (header?.firstName.isNotEmpty ?? false)
+            ? header!.firstName
+            : _greetingName(storedName);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                _statChip(emoji: '🪙', value: '20'),
+                _avatar(storedName.isNotEmpty ? storedName : name),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _h(locale, 'hello'),
+                        style: const TextStyle(fontSize: 14, color: _kMuted),
+                      ),
+                      Text(
+                        name.isEmpty ? '' : '$name!',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: _kInk,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(width: 8),
-                _statChip(emoji: '⭐', value: '123'),
+                _bellButton(locale),
                 const SizedBox(width: 8),
-                _statChip(emoji: '💳', value: "0 so'm"),
+                _languageButton(locale),
               ],
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
-  Widget _statChip({required String emoji, required String value}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      decoration: BoxDecoration(
+  /// "ABDIKARIMOV FARHOD" -> "Farhod"
+  String _greetingName(String fullName) {
+    final parts = fullName.split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '';
+    final word = parts.length > 1 ? parts[1] : parts[0];
+    return word[0].toUpperCase() + word.substring(1).toLowerCase();
+  }
+
+  Widget _avatar(String fullName) {
+    final letters = fullName
+        .split(' ')
+        .where((p) => p.isNotEmpty)
+        .take(2)
+        .map((p) => p[0].toUpperCase())
+        .join();
+    return GestureDetector(
+      onTap: _openProfile,
+      child: Container(
+        width: 62,
+        height: 62,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2563EB).withOpacity(0.18),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF7DB4FF), Color(0xFF2563EB)],
+            ),
+          ),
+          child: Text(
+            letters.isEmpty ? '?' : letters,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _roundWhite({
+    required Widget child,
+    required void Function(Rect anchor) onTap,
+  }) {
+    return Builder(
+      builder: (buttonContext) => Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0E1A4C).withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
+        shape: const StadiumBorder(),
+        elevation: 0,
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            // Tugmaning ekrandagi o'rni — ochiladigan oyna shu tugma ostida chiqadi
+            final box = buttonContext.findRenderObject() as RenderBox;
+            onTap(box.localToGlobal(Offset.zero) & box.size);
+          },
+          child: Container(
+            height: 46,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(23),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0E1A4C).withOpacity(0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Center(child: child),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _bellButton(String locale) {
+    return _roundWhite(
+      onTap: (anchor) => showNotificationsPopup(
+        context,
+        anchor: anchor,
+        locale: locale,
+        onOpenAll: () => Navigator.pushNamed(
+          mainRootNavigatorKey.currentContext!,
+          Routes.notification,
+        ),
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Icon(Icons.notifications_none_rounded, size: 24, color: _kInk),
+          Positioned(
+            right: 1,
+            top: 1,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Til tugmasi: bosilganda ostida UZ / RU tanlash ro'yxati ochiladi
+  Future<void> _openLanguageMenu(Rect anchor, String locale) async {
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final selected = await showMenu<String>(
+      context: context,
+      color: Colors.white,
+      elevation: 10,
+      shadowColor: const Color(0x330E1A4C),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      constraints: const BoxConstraints(minWidth: 170),
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(anchor.left, anchor.bottom + 6, anchor.width, 0),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        _languageItem('uz', "O'zbekcha", Assets.pngUzbek, locale == 'uz'),
+        _languageItem('ru', 'Русский', Assets.pngRussia, locale == 'ru'),
+      ],
+    );
+    if (!mounted || selected == null || selected == locale) return;
+    context.read<AppBloc>().add(AppChangeLocale(selected));
+  }
+
+  PopupMenuItem<String> _languageItem(
+      String value, String title, String flag, bool isSelected) {
+    return PopupMenuItem<String>(
+      value: value,
+      height: 48,
+      child: Row(
+        children: [
+          ClipOval(
+            child: Image.asset(flag, width: 24, height: 24, fit: BoxFit.cover),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? _kPrimary : _kInk,
+              ),
+            ),
+          ),
+          if (isSelected)
+            const Icon(Icons.check_circle_rounded, size: 20, color: _kPrimary),
+        ],
+      ),
+    );
+  }
+
+  Widget _languageButton(String locale) {
+    return _roundWhite(
+      onTap: (anchor) => _openLanguageMenu(anchor, locale),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 17)),
+          ClipOval(
+            child: Image.asset(
+              locale == 'ru' ? Assets.pngRussia : Assets.pngUzbek,
+              width: 22,
+              height: 22,
+              fit: BoxFit.cover,
+            ),
+          ),
           const SizedBox(width: 6),
           Text(
-            value,
+            locale == 'ru' ? 'RU' : 'UZ',
             style: const TextStyle(
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               color: _kInk,
             ),
           ),
+          const SizedBox(width: 2),
+          const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: _kInk),
         ],
       ),
     );
   }
+
 
   // ---------------------------------------------------------------------------
   // "Davom eting" banneri: homepage.png rasmi TO'LIQ (kesilmagan holda)
