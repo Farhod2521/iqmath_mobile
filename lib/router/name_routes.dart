@@ -51,6 +51,11 @@ class Routes {
   static const parentAssimilation='/parent_assimilation';
   static const homeParent='/home_parent';
   static const mainTeacher='/main_teacher';
+  static const parentChildren='/parent_children';
+  static const parentChild='/parent_child';
+  static const roleProfile='/role_profile';
+  static const tutorGroups='/tutor_groups';
+  static const tutorGroupDetail='/tutor_group_detail';
   static const referalLink='/referal_link';
   static const paymentPanel='/payment_panel';
   static const parentStudentsDiagnostics='/parent_students_diagnostics';

@@ -70,6 +70,7 @@ dependencies:
   webview_flutter: ^4.13.1
   sensors_plus: ^4.0.2
   device_info_plus: ^12.4.0
+  qr_flutter: ^4.1.0
 
 dependency_overrides:
   # permission_handler 13.x -> permission_handler_android 14.x compileSdk 37 ('android-37')

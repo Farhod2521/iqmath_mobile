@@ -149,10 +149,40 @@ class PaymentRecord {
         receiptUrl = '${j['receipt_url'] ?? ''}',
         date = DateTime.tryParse('${j['payment_date'] ?? j['created_at'] ?? ''}');
 
+  /// Ota-ona API'si (`parent/children/<id>/payments/` → `history`) elementi
+  PaymentRecord.fromHistory(Map<String, dynamic> j)
+      : id = (j['id'] as num?)?.toInt() ?? 0,
+        amount = num.tryParse('${j['amount']}') ?? 0,
+        originalAmount = num.tryParse('${j['original_amount']}'),
+        discountPercent = (j['discount_percent'] as num?)?.toInt() ?? 0,
+        months = (j['months'] as num?)?.toInt() ?? 1,
+        status = '${j['status'] ?? 'pending'}',
+        gateway = '${j['gateway'] ?? ''}',
+        cardPan = '${j['card_pan'] ?? ''}',
+        paidBy = '${j['paid_by'] ?? 'student'}',
+        payerName = '${j['payer_name'] ?? ''}',
+        couponCode = '${j['coupon_code'] ?? ''}',
+        transactionId = '${j['transaction_id'] ?? ''}',
+        invoiceUuid = '${j['invoice_uuid'] ?? ''}',
+        receiptUrl = '${j['receipt_url'] ?? ''}',
+        date = DateTime.tryParse('${j['date'] ?? ''}');
+
   bool get isSuccess => status == 'success';
 
   /// Chek havolasi invoys ID'dan yasaladi (saytdagi bilan bir xil)
   String get checkUrl => invoiceUuid.isNotEmpty ? '$_multicardCheck$invoiceUuid' : receiptUrl;
+}
+
+/// To'lov chekini pastki oynada ko'rsatadi
+void showPaymentReceipt(BuildContext context, PaymentRecord item, String locale) {
+  HapticFeedback.lightImpact();
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useRootNavigator: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => PaymentReceiptSheet(item: item, locale: locale),
+  );
 }
 
 class PaymentsPage extends StatefulWidget {
@@ -282,7 +312,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
       _summary(locale, total, paid.length),
       const SizedBox(height: 16),
       for (final item in _items!) ...[
-        _PaymentCard(item: item, locale: locale, onDetails: () => _showReceipt(item, locale)),
+        PaymentCard(item: item, locale: locale, onDetails: () => _showReceipt(item, locale)),
         const SizedBox(height: 12),
       ],
     ];
@@ -346,13 +376,13 @@ class _PaymentsPageState extends State<PaymentsPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ReceiptSheet(item: item, locale: locale),
+      builder: (_) => PaymentReceiptSheet(item: item, locale: locale),
     );
   }
 }
 
-class _PaymentCard extends StatelessWidget {
-  const _PaymentCard({required this.item, required this.locale, required this.onDetails});
+class PaymentCard extends StatelessWidget {
+  const PaymentCard({super.key, required this.item, required this.locale, required this.onDetails});
 
   final PaymentRecord item;
   final String locale;
@@ -473,8 +503,8 @@ class _PaymentCard extends StatelessWidget {
   }
 }
 
-class _ReceiptSheet extends StatelessWidget {
-  const _ReceiptSheet({required this.item, required this.locale});
+class PaymentReceiptSheet extends StatelessWidget {
+  const PaymentReceiptSheet({super.key, required this.item, required this.locale});
 
   final PaymentRecord item;
   final String locale;

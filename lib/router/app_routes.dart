@@ -14,7 +14,6 @@ import 'package:my_flutter_template/features/home/presentation/pages/home/home_p
 import 'package:my_flutter_template/features/home/presentation/pages/home/widgets/calculator_page.dart';
 import 'package:my_flutter_template/features/home/presentation/pages/home/widgets/multiplication_table.dart';
 import 'package:my_flutter_template/features/home/presentation/pages/home_parent/widget/parent_assimilation_page.dart';
-import 'package:my_flutter_template/features/home/presentation/pages/home_teacher/home_teacher_page.dart';
 import 'package:my_flutter_template/features/home/presentation/pages/home_teacher/payment_panel_page.dart';
 import 'package:my_flutter_template/features/home/presentation/pages/home_teacher/referal_link_page.dart';
 import 'package:my_flutter_template/features/home/presentation/pages/notification/notification_page.dart';
@@ -50,7 +49,6 @@ import '../features/auth/presentation/pages/otp_code_page.dart';
 import '../features/diagnostics/presentation/pages/diagnostics_page.dart';
 import '../features/home/presentation/blocs/home/home_bloc.dart';
 import '../features/home/presentation/blocs/notification/notification_bloc.dart';
-import '../features/home/presentation/pages/home_parent/home_parent_page.dart';
 import '../features/home/presentation/pages/home_parent/widget/parent_information_screen.dart';
 import '../features/main/presentation/bloc/main_bloc.dart';
 import '../features/products/presentation/pages/products_page.dart';
@@ -77,6 +75,13 @@ import '../features/subject/presentation/pages/subject_page.dart';
 import '../features/subject/presentation/pages/telegram_bot_page.dart';
 import '../features/subject/presentation/widget/book_card_widget.dart';
 import '../features/subject/presentation/widget/topic_card.dart';
+import '../features/parent_dashboard/parent_child_page.dart';
+import '../features/parent_dashboard/parent_children_page.dart';
+import '../features/parent_dashboard/parent_home_page.dart';
+import '../features/role_shell/role_profile_page.dart';
+import '../features/tutor_dashboard/tutor_group_detail_page.dart';
+import '../features/tutor_dashboard/tutor_groups_page.dart';
+import '../features/tutor_dashboard/tutor_home_page.dart';
 import '../injector_container.dart';
 import 'name_routes.dart';
 
@@ -248,7 +253,8 @@ class AppRoutes {
                 key: mainRootNavigatorKey,
                 onGenerateRoutes: const [
                   HomeParentRoutes.onGenerateRoute,
-                  ParentSubjectsResults.onGenerateRoute,
+                  ParentChildrenRoutes.onGenerateRoute,
+                  RoleProfileRoutes.onGenerateRoute,
                 ],
               ),
             ),
@@ -269,7 +275,8 @@ class AppRoutes {
                 key: mainRootNavigatorKey,
                 onGenerateRoutes: const [
                   HomeTeacherRoutes.onGenerateRoute,
-                  // ParentSubjectsResults.onGenerateRoute,
+                  TutorGroupsRoutes.onGenerateRoute,
+                  RoleProfileRoutes.onGenerateRoute,
                 ],
               ),
             ),
@@ -379,6 +386,14 @@ class AppRoutes {
             settings: settings,
             builder: (_) => PaymentPanelPage(),
           ),
+        Routes.parentChild => CupertinoPageRoute(
+            settings: settings,
+            builder: (_) => ParentChildPage(args: settings.arguments as ParentChildArgs),
+          ),
+        Routes.tutorGroupDetail => CupertinoPageRoute(
+            settings: settings,
+            builder: (_) => TutorGroupDetailPage(groupId: settings.arguments as int),
+          ),
         Routes.parentInfo => CupertinoPageRoute(
             settings: settings,
             builder: (_) => ParentInformationScreen(
@@ -460,7 +475,7 @@ class HomeParentRoutes {
       switch (settings.name) {
         Routes.home => CupertinoPageRoute(
             settings: settings,
-            builder: (_) => const HomeParentPage(),
+            builder: (_) => const ParentHomePage(),
           ),
         _ => null,
       };
@@ -471,7 +486,40 @@ class HomeTeacherRoutes {
       switch (settings.name) {
         Routes.home => CupertinoPageRoute(
             settings: settings,
-            builder: (_) => const HomeTeacherPage(),
+            builder: (_) => const TutorHomePage(),
+          ),
+        _ => null,
+      };
+}
+
+class ParentChildrenRoutes {
+  static Route<dynamic>? onGenerateRoute(RouteSettings settings) =>
+      switch (settings.name) {
+        Routes.parentChildren => CupertinoPageRoute(
+            settings: settings,
+            builder: (_) => const ParentChildrenPage(),
+          ),
+        _ => null,
+      };
+}
+
+class TutorGroupsRoutes {
+  static Route<dynamic>? onGenerateRoute(RouteSettings settings) =>
+      switch (settings.name) {
+        Routes.tutorGroups => CupertinoPageRoute(
+            settings: settings,
+            builder: (_) => const TutorGroupsPage(),
+          ),
+        _ => null,
+      };
+}
+
+class RoleProfileRoutes {
+  static Route<dynamic>? onGenerateRoute(RouteSettings settings) =>
+      switch (settings.name) {
+        Routes.roleProfile => CupertinoPageRoute(
+            settings: settings,
+            builder: (_) => const RoleProfilePage(),
           ),
         _ => null,
       };
