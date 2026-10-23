@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:my_flutter_template/core/error/failure.dart';
 import 'package:my_flutter_template/core/local_source/local_source.dart';
@@ -36,32 +37,56 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState>
   ) async {
     final ImagePicker picker = ImagePicker();
     XFile? photo;
-    if (event.isFromGallery) {
-      photo = await picker.pickImage(source: ImageSource.gallery);
-    } else {
-      photo = await picker.pickImage(source: ImageSource.camera);
+    try {
+      // Rasm o'lchamini tanlashda kichraytiramiz — katta kamera rasmlari xotirani to'ldirib,
+      // Android ilovani yopib qo'ymasligi uchun
+      photo = await picker.pickImage(
+        source: event.isFromGallery ? ImageSource.gallery : ImageSource.camera,
+        maxWidth: 1080,
+        maxHeight: 1080,
+        imageQuality: 90,
+      );
+    } catch (_) {
+      // Ruxsat berilmagan / kamera yo'q — jim qaytamiz
+      return;
     }
-    final bytes = await photo?.readAsBytes();
-    if (bytes != null) {
-      final compressedPhotoBytes = await FlutterImageCompress.compressWithList(
+    if (photo == null) return;
+
+    final bytes = await photo.readAsBytes();
+    Uint8List uploadBytes = bytes;
+    try {
+      // JPEG: HEIC siqish ko'p Android qurilmalarda (HEVC kodeki yo'q) ilovani yopib qo'yardi
+      uploadBytes = await FlutterImageCompress.compressWithList(
         bytes,
-        format: CompressFormat.heic,
-        minHeight: 1080,
-        minWidth: 375,
+        format: CompressFormat.jpeg,
+        quality: 85,
+        minHeight: 512,
+        minWidth: 512,
       );
-      final response = await uploadImageUseCase(
-        UploadImageParams(compressedPhotoBytes),
-      );
-      response.fold(
-        (failure) => getErrorMessage(failure),
-        (success) => emit(
+    } catch (_) {
+      uploadBytes = bytes; // siqib bo'lmasa — asl rasm (server o'zi kichraytiradi)
+    }
+
+    emit(state.copyWith(status: EditProfileStatus.loading, profileImageUrl: photo.path));
+    final response = await uploadImageUseCase(UploadImageParams(uploadBytes));
+    response.fold(
+      (failure) => emit(
+        state.copyWith(
+          status: EditProfileStatus.error,
+          errorMessage: getErrorMessage(failure),
+        ),
+      ),
+      (success) {
+        sl<LocalSource>().setAvatarUrl(success);
+        emit(
           state.copyWith(
+            status: EditProfileStatus.idle,
             changeProfileImageUrl: success,
             profileImageUrl: photo?.path,
           ),
-        ),
-      );
-    }
+        );
+      },
+    );
   }
 
   FutureOr<void> _changeInfoHandler(

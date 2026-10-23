@@ -3669,7 +3669,10 @@ class _QuestionPageState extends State<QuestionPage> with QuestionMixin {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Row(
+                      // IntrinsicHeight: scroll ichida balandlik cheksiz — stretch'siz qator
+                      // xato berib, oynaning pastki qismi bo'sh (oq) chizilardi
+                      IntrinsicHeight(
+                        child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Container(
@@ -3729,6 +3732,7 @@ class _QuestionPageState extends State<QuestionPage> with QuestionMixin {
                             ),
                           ),
                         ],
+                        ),
                       ),
                     ],
                   ),

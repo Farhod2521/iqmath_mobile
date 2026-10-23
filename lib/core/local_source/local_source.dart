@@ -162,6 +162,16 @@ class LocalSource {
     return box.get('user_address');
   }
 
+  /// Profil rasmi URL'i (serverdan; bo'sh bo'lsa — rasm yo'q)
+  void setAvatarUrl(String? url) {
+    box.put('user_avatar', url ?? '');
+  }
+
+  String? getAvatarUrl() {
+    final value = box.get('user_avatar');
+    return (value is String && value.isNotEmpty) ? value : null;
+  }
+
   void setUserRole(String role) {
     box.put('user_role', role);
   }

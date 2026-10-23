@@ -51,6 +51,7 @@ class MainBloc extends Bloc<MainEvent, MainState> with BaseBlocMixin {
         localSource.setUserProfileID(success.id.toString());
         // localSource.setPhoneNumber(success.phone?.replaceAll('998', '') ?? '');
         localSource.setUserAddress(success.address ?? '');
+        localSource.setAvatarUrl(success.avatar);
         emit(
           state.copyWith(
             status: MainStatus.success,

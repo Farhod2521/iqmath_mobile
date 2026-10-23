@@ -9,10 +9,15 @@
 <!--        android:name="com.google.android.gms.permission.AD_ID"-->
 <!--        tools:node="remove" />-->
     <!-- Provide required visibility configuration for API level 30 and above -->
+    <!-- allowBackup=false: qayta o'rnatishda Android eski sessiya va PIN kodni zaxiradan tiklamasin
+         (aks holda yangi yuklangan ilova kirish o'rniga "PIN kodni kiriting" bilan ochilardi) -->
     <application
         android:label="IqMath"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name=".MainActivity"
             android:exported="true"

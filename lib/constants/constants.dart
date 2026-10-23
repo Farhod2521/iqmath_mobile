@@ -42,7 +42,7 @@ class Urls {
   static const PRODUCTS = '/products';
   static const ORGANIZATIONRANKS = '/v1/organization_rank';
   static const FAQ = '/v1/faq';
-  static const UPLOADIMAGE = '/v1/upload-image';
+  static const UPLOADIMAGE = '/auth/user/avatar/';
   static const LIKERESTAURANT = '/v1/branch/favourites';
   static const BRANCHWANTS = '/v1/branch/wants';
   static const BANNERS = '/v1/banner';

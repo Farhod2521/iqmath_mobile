@@ -21,6 +21,7 @@ class UserResponse {
     this.studentTime,
     this.role,
     this.hasDiagnost,
+    this.avatar,
   });
 
   UserResponse.fromJson(dynamic json) {
@@ -45,6 +46,7 @@ class UserResponse {
     studentTime = json['student_time'];
     role = json['role'];
     hasDiagnost = json['has_diagnost'];
+    avatar = json['avatar'];
   }
 
   int? id;
@@ -68,6 +70,7 @@ class UserResponse {
   String? studentTime;
   String? role;
   bool? hasDiagnost;
+  String? avatar; // profil rasmi URL'i
 
   Map<String, dynamic> toJson() {
     final map = <String, dynamic>{};
@@ -92,6 +95,7 @@ class UserResponse {
     map['student_time'] = studentTime;
     map['role'] = role;
     map['has_diagnost'] = hasDiagnost;
+    map['avatar'] = avatar;
     return map;
   }
 }

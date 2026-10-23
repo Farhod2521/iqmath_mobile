@@ -195,6 +195,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
 import 'package:my_flutter_template/core/app_bloc/app_bloc.dart';
+import 'package:my_flutter_template/core/local_source/local_source.dart';
+import 'package:my_flutter_template/features/profile/presentation/pages/chat_detail_page.dart';
 import 'package:my_flutter_template/injector_container.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -212,6 +214,13 @@ class FAQLocalization {
       'retryButton': 'Qayta urinish',
       'noQuestions': 'Hozircha savollar mavjud emas',
       'watchVideo': 'Videoni tomosha qilish',
+      'contactTitle': 'Javob topa olmadingizmi?',
+      'contactSubtitle': 'Savolingizni yozing — administrator shaxsiy chatda javob beradi',
+      'contactButton': 'Adminga yozish',
+      'contactHint': 'Savolingizni yozing...',
+      'send': 'Yuborish',
+      'supportName': "Qo'llab-quvvatlash xizmati",
+      'sendError': "Xabar yuborilmadi. Qayta urinib ko'ring.",
     },
     'ru': {
       'title': 'Часто задаваемые вопросы',
@@ -220,6 +229,13 @@ class FAQLocalization {
       'retryButton': 'Повторить попытку',
       'noQuestions': 'Пока нет вопросов',
       'watchVideo': 'Смотреть видео',
+      'contactTitle': 'Не нашли ответ?',
+      'contactSubtitle': 'Напишите вопрос — администратор ответит в личном чате',
+      'contactButton': 'Написать администратору',
+      'contactHint': 'Напишите ваш вопрос...',
+      'send': 'Отправить',
+      'supportName': 'Служба поддержки',
+      'sendError': 'Сообщение не отправлено. Попробуйте ещё раз.',
     },
   };
 
@@ -233,6 +249,218 @@ class FAQLocalization {
   String get retryButton => translate('retryButton');
   String get noQuestions => translate('noQuestions');
   String get watchVideo => translate('watchVideo');
+  String get contactTitle => translate('contactTitle');
+  String get contactSubtitle => translate('contactSubtitle');
+  String get contactButton => translate('contactButton');
+  String get contactHint => translate('contactHint');
+  String get send => translate('send');
+  String get supportName => translate('supportName');
+  String get sendError => translate('sendError');
+}
+
+// ==================== ADMINGA YOZISH ====================
+/// FAQ ostidagi panel: savolini yozgan foydalanuvchi qo'llab-quvvatlash bilan shaxsiy chatga o'tadi.
+/// Backend (chat/student-support/send/) suhbatni topadi yoki yaratadi va birinchi xabarni yuboradi.
+class SupportContactBar extends StatelessWidget {
+  const SupportContactBar({super.key, required this.l10n});
+
+  final FAQLocalization l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, -4)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(color: const Color(0xFFE8F0FF), borderRadius: BorderRadius.circular(14)),
+              child: const Icon(Icons.support_agent_rounded, color: Color(0xFF2563EB)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.contactTitle,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F1B3D))),
+                  const SizedBox(height: 2),
+                  Text(l10n.contactSubtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF5B6478))),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton(
+              onPressed: () => _openSheet(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(l10n.contactButton, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => _SupportMessageSheet(l10n: l10n, parentContext: context),
+    );
+  }
+}
+
+class _SupportMessageSheet extends StatefulWidget {
+  const _SupportMessageSheet({required this.l10n, required this.parentContext});
+
+  final FAQLocalization l10n;
+  final BuildContext parentContext;
+
+  @override
+  State<_SupportMessageSheet> createState() => _SupportMessageSheetState();
+}
+
+class _SupportMessageSheetState extends State<_SupportMessageSheet> {
+  final _controller = TextEditingController();
+  bool _sending = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty || _sending) return;
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    try {
+      final response = await http.post(
+        Uri.parse('https://api.iqmath.uz/api/v1/func_chat/chat/student-support/send/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': sl<LocalSource>().getAccessToken() ?? '',
+        },
+        body: json.encode({'text': text}),
+      );
+      alice.onHttpResponse(response);
+      final body = json.decode(utf8.decode(response.bodyBytes));
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        setState(() => _error = (body is Map ? body['error'] ?? body['detail'] : null)?.toString() ?? widget.l10n.sendError);
+        return;
+      }
+      final chatId = body['conversation']?['id'];
+      if (!mounted || chatId is! int) return;
+      Navigator.of(context).pop();
+      Navigator.of(widget.parentContext).push(
+        MaterialPageRoute(
+          builder: (_) => ChatDetailPage(
+            chatId: chatId,
+            userName: widget.l10n.supportName,
+            currentUserId: int.tryParse(sl<LocalSource>().getUserId() ?? '0'),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) setState(() => _error = widget.l10n.sendError);
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = widget.l10n;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 5,
+              decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(3)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(l10n.contactButton,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F1B3D))),
+          const SizedBox(height: 4),
+          Text(l10n.contactSubtitle, style: const TextStyle(fontSize: 13, color: Color(0xFF5B6478))),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            minLines: 3,
+            maxLines: 6,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              hintText: l10n.contactHint,
+              filled: true,
+              fillColor: const Color(0xFFF8FAFD),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE3E8F1)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE3E8F1)),
+              ),
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: const TextStyle(color: Color(0xFFEF4444), fontSize: 13)),
+          ],
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: _sending ? null : _send,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              icon: _sending
+                  ? const SizedBox(
+                      width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.send_rounded, size: 18),
+              label: Text(l10n.send, style: const TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ==================== FAQ MODEL ====================
@@ -359,6 +587,8 @@ class _FAQPageState extends State<FAQPage> {
             elevation: 0,
             leading: const SizedBox.shrink(),
           ),
+          // Savollarda javob topilmasa — administrator bilan shaxsiy chat
+          bottomNavigationBar: SupportContactBar(l10n: l10n),
           body: isLoading
               ? const Center(child: CircularProgressIndicator())
               : errorMessage != null

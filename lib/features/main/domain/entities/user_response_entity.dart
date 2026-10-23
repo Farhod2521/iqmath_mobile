@@ -23,6 +23,7 @@ class UserResponseEntity extends Equatable {
   final String? studentTime;
   final String? role;
   final bool? hasDiagnost;
+  final String? avatar; // profil rasmi URL'i
 
   const UserResponseEntity({
     this.id,
@@ -46,6 +47,7 @@ class UserResponseEntity extends Equatable {
     this.studentTime,
     this.role,
     this.hasDiagnost,
+    this.avatar,
   });
 
   @override
@@ -71,6 +73,7 @@ class UserResponseEntity extends Equatable {
     studentTime,
     role,
     hasDiagnost,
+    avatar,
   ];
 }
 
@@ -98,6 +101,7 @@ extension UserResponseEntityX on UserResponse {
       studentTime: studentTime,
       role: role,
       hasDiagnost: hasDiagnost,
+      avatar: avatar,
     );
   }
 }

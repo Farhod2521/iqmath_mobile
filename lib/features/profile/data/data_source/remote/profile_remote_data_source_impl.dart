@@ -58,7 +58,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
           {
             "file": MultipartFile.fromBytes(
               file,
-              filename: "user_image",
+              filename: "avatar.jpg",
             ),
           },
         ),

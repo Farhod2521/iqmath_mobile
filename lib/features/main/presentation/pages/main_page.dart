@@ -8,6 +8,7 @@ import 'package:my_flutter_template/generated/l10n.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:my_flutter_template/services/refresh_token_service.dart';
 
@@ -186,6 +187,21 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
     }
   }
 
+  /// Android "Orqaga": avval joriy bo'lim ichidagi sahifa yopiladi (masalan, masala sahifasi),
+  /// keyin bosh sahifaga qaytiladi va faqat bosh sahifada ilovadan chiqiladi.
+  /// Bo'limlar ichki Navigator'da ochilgani uchun tizim "orqaga"si to'g'ridan-to'g'ri ilovani yopardi.
+  Future<void> _onSystemBack() async {
+    final current = context.read<MainBloc>().state.currentPage;
+    final navigator = _destinationKeys?[current.getIndex].currentState;
+    if (navigator != null && await navigator.maybePop()) return;
+    if (!mounted) return;
+    if (!current.isHome) {
+      context.read<MainBloc>().add(const MainPageChangeEvent(MainPages.home));
+      return;
+    }
+    SystemNavigator.pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized || destinations == null) {
@@ -194,6 +210,16 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
       );
     }
 
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _onSystemBack();
+      },
+      child: _buildShell(context),
+    );
+  }
+
+  Widget _buildShell(BuildContext context) {
     return BlocConsumer<MainBloc, MainState>(
       listenWhen: (previous, current) =>
       previous.currentPage != current.currentPage,

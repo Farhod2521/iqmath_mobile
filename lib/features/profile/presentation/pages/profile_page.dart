@@ -136,7 +136,10 @@ class _ProfilePageState extends State<ProfilePage> {
       mainRootNavigatorKey.currentContext!,
       route,
       arguments: arguments,
-    );
+    ).then((_) {
+      // Tahrirlashdan qaytganda yangi profil rasmi darhol ko'rinsin
+      if (mounted) setState(() {});
+    });
   }
 
   void _showComingSoon() {
@@ -227,7 +230,7 @@ class _ProfilePageState extends State<ProfilePage> {
         firstName: _fullName(locale),
         id: localSource.getUserId() ?? '',
         phoneNumber: localSource.getPhoneNumber() ?? '',
-        profilePhoto: '',
+        profilePhoto: localSource.getAvatarUrl() ?? '',
         address: localSource.getUserAddress() ?? '',
       ),
     );
@@ -673,14 +676,27 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             ),
             alignment: Alignment.center,
-            child: Text(
-              initial,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
+            clipBehavior: Clip.antiAlias,
+            // Profil rasmi bo'lsa — rasm, bo'lmasa ismning bosh harfi
+            child: sl<LocalSource>().getAvatarUrl() != null
+                ? Image.network(
+                    sl<LocalSource>().getAvatarUrl()!,
+                    width: 64,
+                    height: 64,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Text(
+                      initial,
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+                    ),
+                  )
+                : Text(
+                    initial,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
           ),
           Positioned(
             right: -2,
