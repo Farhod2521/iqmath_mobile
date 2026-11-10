@@ -2497,6 +2497,7 @@ import '../../../../router/name_routes.dart';
 import '../../../diagnostics/presentation/diagnostic_texts.dart';
 import '../../../diagnostics/presentation/pages/diagnostic_results_page.dart';
 import '../../../home/presentation/pages/home_parent/widget/parent_assimilation_page.dart';
+import '../../../rewards/rewards_api.dart';
 
 class QuestionPage extends StatefulWidget {
   final QuestionPageArguments arguments;
@@ -3943,6 +3944,8 @@ class _QuestionPageState extends State<QuestionPage> with QuestionMixin {
                   },
                 ),
               ),
+              // "Mentorga yuborish" — faqat Start Pro tarifida (Start'da mentor yordami yo'q)
+              if (TariffService.isPro.value == true)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: const BoxDecoration(

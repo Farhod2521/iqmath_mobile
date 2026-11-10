@@ -62,6 +62,11 @@ class Routes {
   static const multiplicationTable='/multiplication_table';
   static const calculator='/calculator';
   static const chat='/chat';
+  // Tarix: ball, tanga, so'm va gol harakatlari
+  static const walletHistory='/wallet_history';
+  // Matematik Liga va haftalik test (argument: attempt id)
+  static const liga='/liga';
+  static const ligaTest='/liga_test';
   static const battle='/battle';
   static const battleRoom='/battle_room';
   static const battleHistory='/battle_history';

@@ -15,6 +15,8 @@ import 'package:my_flutter_template/features/home/presentation/widgets/notificat
 import 'package:my_flutter_template/injector_container.dart';
 import 'package:my_flutter_template/router/app_routes.dart';
 import 'package:my_flutter_template/router/name_routes.dart';
+import 'package:my_flutter_template/features/rewards/rewards_api.dart';
+import 'package:my_flutter_template/features/rewards/rewards_texts.dart';
 
 /// Bosh sahifa ranglari
 const Color _kInk = Color(0xFF0F172A);
@@ -52,6 +54,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _dashboardFuture = _loadDashboard();
+    GolStore.refresh();
   }
 
   Future<HomeDashboardModel?> _loadDashboard() async {
@@ -65,6 +68,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _dashboardFuture = _loadDashboard();
     });
+    GolStore.refresh();
     await _dashboardFuture;
   }
 
@@ -297,6 +301,8 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                _golChip(locale),
+                const SizedBox(width: 8),
                 _bellButton(locale),
                 const SizedBox(width: 8),
                 _languageButton(locale),
@@ -394,6 +400,52 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             child: Center(child: child),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// ⚽ N gol — jami gol (kundalik kirish + haftalik testlar). Bosilganda Tarix ochiladi.
+  Widget _golChip(String locale) {
+    return ValueListenableBuilder<int?>(
+      valueListenable: GolStore.total,
+      builder: (context, gol, _) => GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          Navigator.pushNamed(mainRootNavigatorKey.currentContext!, Routes.walletHistory);
+        },
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.only(left: 5, right: 11),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0E1A4C).withOpacity(0.06),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: const BoxDecoration(color: Color(0xFFE3EDFF), shape: BoxShape.circle),
+                child: const Icon(Icons.sports_soccer_rounded, size: 22, color: Color(0xFF0B1B3F)),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                gol == null ? '…' : '$gol',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _kInk),
+              ),
+              const SizedBox(width: 3),
+              Text(rt(locale, 'gol'), style: const TextStyle(fontSize: 12, color: _kMuted)),
+            ],
           ),
         ),
       ),

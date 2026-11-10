@@ -10,7 +10,10 @@ import 'package:my_flutter_template/features/auth/presentation/page_args/auth_ar
 import 'package:my_flutter_template/features/profile/presentation/arguments/edit_profile_page_args.dart';
 import 'package:my_flutter_template/injector_container.dart';
 import 'package:my_flutter_template/core/widgets/student_stats_card.dart';
-import 'package:my_flutter_template/features/home_dashboard/domain/usecases/get_home_dashboard_usecase.dart';
+import 'package:my_flutter_template/features/rewards/daily_reward_dialog.dart';
+import 'package:my_flutter_template/features/rewards/rewards_api.dart';
+import 'package:my_flutter_template/features/rewards/rewards_texts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/app_bloc/app_bloc.dart';
 import '../../../../core/device/device_widgets.dart';
 import '../../../../router/app_routes.dart';
@@ -85,23 +88,14 @@ class _ProfilePageState extends State<ProfilePage> {
   int _coin = 0;
   int _sum = 0;
   bool _statsLoading = true;
-  int? _streak; // bosh sahifa API'sidagi header'dan
 
   @override
   void initState() {
     super.initState();
     _fetchMyScore();
-    _fetchStreak();
+    GolStore.refresh(); // jami gol (kundalik kirish + haftalik testlar)
   }
 
-  Future<void> _fetchStreak() async {
-    final result = await sl<GetHomeDashboardUseCase>()(GetHomeDashboardParams());
-    if (!mounted) return;
-    result.fold(
-      (_) => setState(() => _streak = 0),
-      (data) => setState(() => _streak = data.header?.streakDays ?? 0),
-    );
-  }
 
   Future<void> _fetchMyScore() async {
     final token = sl<LocalSource>().getAccessToken();
@@ -309,6 +303,10 @@ class _ProfilePageState extends State<ProfilePage> {
               final password = localSource.getUserPassword() ?? '';
               final pinCode = localSource.getPinCode() ?? '';
               await localSource.clear();
+              // Boshqa hisob bilan kirganda gol, tarif va kundalik mukofot qaytadan tekshiriladi
+              DailyReward.reset();
+              GolStore.total.value = null;
+              TariffService.isPro.value = null;
               localSource.setPhoneNumber(phoneNumber);
               localSource.setUserPassword(password);
               localSource.setPinCode(pinCode);
@@ -348,13 +346,16 @@ class _ProfilePageState extends State<ProfilePage> {
                 _buildHeader(locale, fullName, phone, initial),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: StudentStatsCard(
-                    locale: locale,
-                    streak: _streak,
-                    score: _statsLoading ? null : _score,
-                    coin: _statsLoading ? null : _coin,
-                    sum: _statsLoading ? null : _sum,
-                    onTap: () => _openRoute(Routes.balls),
+                  child: ValueListenableBuilder<int?>(
+                    valueListenable: GolStore.total,
+                    builder: (context, gol, _) => StudentStatsCard(
+                      locale: locale,
+                      gol: gol,
+                      score: _statsLoading ? null : _score,
+                      coin: _statsLoading ? null : _coin,
+                      sum: _statsLoading ? null : _sum,
+                      onTap: () => _openRoute(Routes.walletHistory),
+                    ),
                   ),
                 ),
                 Padding(
@@ -380,6 +381,15 @@ class _ProfilePageState extends State<ProfilePage> {
                           title: _t(locale, 'myPayments'),
                           subtitle: _t(locale, 'myPaymentsSub'),
                           onTap: () => _openRoute(Routes.payments),
+                        ),
+                        _divider(),
+                        _menuRow(
+                          icon: Icons.history_rounded,
+                          iconColor: const Color(0xFF7C3AED),
+                          iconBg: const Color(0xFFF1EBFF),
+                          title: rt(locale, 'menuHistory'),
+                          subtitle: rt(locale, 'menuHistorySub'),
+                          onTap: () => _openRoute(Routes.walletHistory),
                         ),
                         _divider(),
                         _menuRow(
@@ -446,6 +456,29 @@ class _ProfilePageState extends State<ProfilePage> {
                           onTap: () => _openRoute(Routes.faq),
                         ),
                         _divider(),
+                        ValueListenableBuilder<bool?>(
+                          valueListenable: TariffService.isPro,
+                          builder: (context, isPro, _) {
+                            if (isPro != false || !TariffService.isStudent) return const SizedBox.shrink();
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _menuRow(
+                                  icon: Icons.send_rounded,
+                                  iconColor: const Color(0xFF229ED9),
+                                  iconBg: const Color(0xFFE3F4FC),
+                                  title: rt(locale, 'menuContact'),
+                                  subtitle: rt(locale, 'menuContactSub'),
+                                  onTap: () => launchUrl(
+                                    Uri.parse(kTelegramHelpUrl),
+                                    mode: LaunchMode.externalApplication,
+                                  ),
+                                ),
+                                _divider(),
+                              ],
+                            );
+                          },
+                        ),
                         _menuRow(
                           icon: Icons.shield_rounded,
                           iconColor: const Color(0xFF16A34A),

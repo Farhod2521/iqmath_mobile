@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-/// O'quvchi statistikasi kartasi: Streak, Ball, Tanga, So'm.
-/// Har biri o'z rangli bo'lagida, 3D rasm bilan (assets/images/stat_*.webp).
+/// O'quvchi statistikasi kartasi: Gol, Ball, Tanga, So'm.
+/// Gol — futbol to'pi belgisi; qolganlari 3D rasm bilan (assets/images/stat_*.webp).
 /// `null` qiymat — hali yuklanmoqda ("…" ko'rsatiladi).
 class StudentStatsCard extends StatelessWidget {
   const StudentStatsCard({
     super.key,
     required this.locale,
-    this.streak,
+    this.gol,
     this.score,
     this.coin,
     this.sum,
@@ -15,14 +15,14 @@ class StudentStatsCard extends StatelessWidget {
   });
 
   final String locale;
-  final int? streak;
+  final int? gol;
   final int? score;
   final int? coin;
   final int? sum;
   final VoidCallback? onTap;
 
-  static const _uz = {'streak': 'Streak', 'ball': 'Ball', 'coin': 'Tanga', 'sum': "so'm"};
-  static const _ru = {'streak': 'Серия', 'ball': 'Балл', 'coin': 'Монеты', 'sum': 'сум'};
+  static const _uz = {'gol': 'Gol', 'ball': 'Ball', 'coin': 'Tanga', 'sum': "so'm"};
+  static const _ru = {'gol': 'Голы', 'ball': 'Балл', 'coin': 'Монеты', 'sum': 'сум'};
 
   String _label(String key) => (locale == 'ru' ? _ru : _uz)[key] ?? key;
 
@@ -59,10 +59,10 @@ class StudentStatsCard extends StatelessWidget {
           children: [
             Expanded(
               child: _StatTile(
-                image: 'assets/images/stat_fire.webp',
-                value: formatNumber(streak),
-                label: _label('streak'),
-                colors: const [Color(0xFFFFE9DE), Color(0xFFFFF5EE)],
+                icon: Icons.sports_soccer_rounded,
+                value: formatNumber(gol),
+                label: _label('gol'),
+                colors: const [Color(0xFFE3EDFF), Color(0xFFF1F6FF)],
               ),
             ),
             const SizedBox(width: 6),
@@ -101,13 +101,15 @@ class StudentStatsCard extends StatelessWidget {
 
 class _StatTile extends StatelessWidget {
   const _StatTile({
-    required this.image,
+    this.image,
+    this.icon,
     required this.value,
     required this.label,
     required this.colors,
   });
 
-  final String image;
+  final String? image;
+  final IconData? icon;
   final String value;
   final String label;
   final List<Color> colors;
@@ -127,13 +129,16 @@ class _StatTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Image.asset(
-            image,
-            width: 30,
-            height: 30,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-          ),
+          if (icon != null)
+            Icon(icon, size: 28, color: const Color(0xFF0B1B3F))
+          else
+            Image.asset(
+              image!,
+              width: 30,
+              height: 30,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+            ),
           const SizedBox(width: 5),
           Expanded(
             child: Column(

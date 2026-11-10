@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:my_flutter_template/core/extension/extensions.dart';
+import 'package:my_flutter_template/core/app_bloc/app_bloc.dart';
 import 'package:my_flutter_template/core/theme/colors/app_colors.dart';
 import 'package:my_flutter_template/features/main/presentation/bloc/main_bloc.dart';
 import 'package:my_flutter_template/features/main/presentation/pages/main_page.dart';
@@ -16,6 +17,7 @@ const String _navImgHome = 'assets/images/navbar1.png';
 const String _navImgCourses = 'assets/images/navbar2.png';
 const String _navImgDiagnostics = 'assets/images/navbar3.png';
 const String _navImgBattle = 'assets/images/navbar4.png';
+const String _navImgLiga = 'assets/images/navbar_liga.png';
 
 class CustomBottomAppBar extends StatefulWidget {
   final List<Destination> destinations;
@@ -113,6 +115,19 @@ class _CustomBottomAppBarState extends State<CustomBottomAppBar> {
                         const MainPageChangeEvent(
                           MainPages.diagnostics,
                         ),
+                      );
+                    },
+                  ),
+                  // Matematik Liga — saytdagi /dashboard/student/liga (alohida sahifa sifatida ochiladi)
+                  BottomAppItem(
+                    imageAsset: _navImgLiga,
+                    title: context.read<AppBloc>().state.appLocale == 'ru' ? 'Лига' : 'Liga',
+                    isSelected: false,
+                    itemIndex: 3,
+                    onTap: () {
+                      Navigator.pushNamed(
+                        mainRootNavigatorKey.currentContext!,
+                        Routes.liga,
                       );
                     },
                   ),

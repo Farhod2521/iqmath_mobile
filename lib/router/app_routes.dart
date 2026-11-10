@@ -28,6 +28,9 @@ import 'package:my_flutter_template/features/profile/domain/usecases/get_faq_use
 import 'package:my_flutter_template/features/profile/presentation/blocs/security/security_bloc.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/ball_coins_page.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/balls_page.dart';
+import 'package:my_flutter_template/features/rewards/wallet_history_page.dart';
+import 'package:my_flutter_template/features/liga/liga_page.dart';
+import 'package:my_flutter_template/features/liga/liga_test_page.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/change_password_page.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/chat_page.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/coupons_page.dart';
@@ -369,6 +372,18 @@ class AppRoutes {
         Routes.balls => CupertinoPageRoute(
             settings: settings,
             builder: (_) => BallsPage(),
+          ),
+        Routes.walletHistory => CupertinoPageRoute(
+            settings: settings,
+            builder: (_) => const WalletHistoryPage(),
+          ),
+        Routes.liga => CupertinoPageRoute(
+            settings: settings,
+            builder: (_) => const LigaPage(),
+          ),
+        Routes.ligaTest => MaterialPageRoute(
+            settings: settings,
+            builder: (_) => LigaTestPage(attemptId: settings.arguments as int),
           ),
         Routes.couponUsers => CupertinoPageRoute(
             settings: settings,

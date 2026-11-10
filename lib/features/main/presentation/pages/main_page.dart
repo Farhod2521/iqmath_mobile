@@ -11,6 +11,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:my_flutter_template/services/refresh_token_service.dart';
+import 'package:my_flutter_template/core/app_bloc/app_bloc.dart';
+import 'package:my_flutter_template/features/rewards/daily_reward_dialog.dart';
+import 'package:my_flutter_template/features/rewards/rewards_api.dart';
 
 import '../../../../router/app_routes.dart';
 import '../../../../router/name_routes.dart';
@@ -54,6 +57,15 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
 
     // Token'ni yangilash (QOSHISH)
     // _refreshToken();
+
+    // O'quvchi ilovaga kirganda: tarif (Start / Start Pro) yuklanadi va bugungi +1 gol olinadi —
+    // gol qo'shilgan bo'lsa mukofot oynasi konfetti bilan ochiladi (saytdagi kabi).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final locale = context.read<AppBloc>().state.appLocale ?? 'uz';
+      TariffService.load(locale: locale);
+      DailyReward.claimAndShow(context, locale);
+    });
   }
 
   Future<void> _checkAppVersion() async {
