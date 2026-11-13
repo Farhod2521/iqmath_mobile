@@ -18,6 +18,26 @@ class LigaApi {
   static Future<List<Map<String, dynamic>>> winnersHistory() async =>
       asMapList((await _dio.get('$_base/winners/')).data);
 
+  /// Mavsumlar ro'yxati + sinflar (filtr uchun) + o'quvchining sinfi
+  static Future<Map<String, dynamic>> seasons() async => asMap((await _dio.get('$_base/seasons/')).data);
+
+  /// Mavsum natijalari: sinf g'oliblari va haftalik test g'oliblari
+  static Future<Map<String, dynamic>> seasonResults(int seasonId, int? gradeId) async => asMap((await _dio.get(
+        '$_base/seasons/$seasonId/results/',
+        queryParameters: {if (gradeId != null) 'grade': gradeId},
+      ))
+          .data);
+
+  /// O'quvchining liga tarixi (mavsumlar bo'yicha ball, o'rin, testlar)
+  static Future<Map<String, dynamic>> myHistory() async => asMap((await _dio.get('$_base/my-history/')).data);
+
+  /// Ball tarixi (sahifalab): {count, next, results}
+  static Future<Map<String, dynamic>> myPoints({int page = 1, String? source}) async => asMap((await _dio.get(
+        '$_base/my-points/',
+        queryParameters: {'page': page, 'page_size': 20, if (source != null) 'source': source},
+      ))
+          .data);
+
   /// Ligaga qo'shilish: tanlangan sinf va qoidalarga rozilik
   /// Sinflar ro'yxati (liga javobida `grades` bo'lmasa — eski backend uchun zaxira)
   static Future<List<Map<String, dynamic>>> classes() async {

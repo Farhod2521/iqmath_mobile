@@ -2911,6 +2911,10 @@ class _QuestionPageState extends State<QuestionPage> with QuestionMixin {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
+        // Har bir yangi yechilgan misol uchun +1 gol (ligaga qo'shilganlarga) — hisoblagichni yangilaymiz
+        final golGained = data is Map ? data['gol_gained'] : null;
+        if (golGained is num && golGained > 0) GolStore.refresh();
+
         int correctCount = 0;
         int incorrectCount = 0;
         int answeredCount = 0;

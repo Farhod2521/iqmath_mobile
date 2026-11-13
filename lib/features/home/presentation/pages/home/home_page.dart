@@ -300,7 +300,6 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
                 _golChip(locale),
                 const SizedBox(width: 8),
                 _bellButton(locale),
@@ -408,7 +407,12 @@ class _HomePageState extends State<HomePage> {
 
   /// ⚽ N gol — jami gol (kundalik kirish + haftalik testlar). Bosilganda Tarix ochiladi.
   Widget _golChip(String locale) {
-    return ValueListenableBuilder<int?>(
+    // Ligaga qo'shilmaganlarga gol ko'rsatilmaydi
+    return ValueListenableBuilder<bool>(
+      valueListenable: GolStore.ligaJoined,
+      builder: (context, joined, chip) =>
+          joined ? Padding(padding: const EdgeInsets.only(left: 8), child: chip) : const SizedBox.shrink(),
+      child: ValueListenableBuilder<int?>(
       valueListenable: GolStore.total,
       builder: (context, gol, _) => GestureDetector(
         onTap: () {
@@ -448,6 +452,7 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

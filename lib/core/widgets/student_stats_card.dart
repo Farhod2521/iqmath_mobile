@@ -8,6 +8,7 @@ class StudentStatsCard extends StatelessWidget {
     super.key,
     required this.locale,
     this.gol,
+    this.showGol = true,
     this.score,
     this.coin,
     this.sum,
@@ -16,6 +17,9 @@ class StudentStatsCard extends StatelessWidget {
 
   final String locale;
   final int? gol;
+
+  /// Gol faqat ligaga qo'shilgan o'quvchiga ko'rsatiladi
+  final bool showGol;
   final int? score;
   final int? coin;
   final int? sum;
@@ -57,15 +61,17 @@ class StudentStatsCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Expanded(
-              child: _StatTile(
-                icon: Icons.sports_soccer_rounded,
-                value: formatNumber(gol),
-                label: _label('gol'),
-                colors: const [Color(0xFFE3EDFF), Color(0xFFF1F6FF)],
+            if (showGol) ...[
+              Expanded(
+                child: _StatTile(
+                  icon: Icons.sports_soccer_rounded,
+                  value: formatNumber(gol),
+                  label: _label('gol'),
+                  colors: const [Color(0xFFE3EDFF), Color(0xFFF1F6FF)],
+                ),
               ),
-            ),
-            const SizedBox(width: 6),
+              const SizedBox(width: 6),
+            ],
             Expanded(
               child: _StatTile(
                 image: 'assets/images/stat_ball.webp',

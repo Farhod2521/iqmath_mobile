@@ -10,6 +10,7 @@ import '../../core/widgets/math_html_text.dart';
 import '../../core/widgets/top_notification.dart';
 import '../rewards/rewards_api.dart';
 import 'liga_api.dart';
+import 'liga_review.dart';
 import 'liga_texts.dart';
 import 'liga_widgets.dart';
 
@@ -419,7 +420,7 @@ class _LigaTestPageState extends State<LigaTestPage> {
     );
   }
 
-  String _absUrl(String url) => url.startsWith('http') ? url : 'https://api.iqmath.uz$url';
+  String _absUrl(String url) => ligaAbsUrl(url);
 
   Widget _choiceTile(
     String locale,
@@ -887,6 +888,8 @@ class _Result extends StatelessWidget {
             ),
           ),
         ],
+        const SizedBox(height: 12),
+        LigaReviewSection(attempt: attempt, locale: locale),
         const SizedBox(height: 16),
         Center(
           child: LigaButton(

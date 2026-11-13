@@ -21,6 +21,7 @@ class RewardsApi {
     final res = await _dio.post('${Constants.baseUrl}/func_student/daily-reward/claim/');
     final data = asMap(res.data);
     GolStore.set(data['gol_total']);
+    GolStore.setJoined(data['liga_joined']);
     return data;
   }
 
@@ -28,6 +29,7 @@ class RewardsApi {
     final res = await _dio.get('${Constants.baseUrl}/func_student/daily-reward/');
     final data = asMap(res.data);
     GolStore.set(data['gol_total']);
+    GolStore.setJoined(data['liga_joined']);
     return data;
   }
 
@@ -66,6 +68,12 @@ class GolStore {
   GolStore._();
 
   static final ValueNotifier<int?> total = ValueNotifier<int?>(null);
+
+  /// Gol faqat ligaga qo'shilganlarga: qo'shilmagan o'quvchida gol ko'rsatilmaydi (yig'olmaydi).
+  /// Eski backend `liga_joined` yubormasa — ko'rsatiladi.
+  static final ValueNotifier<bool> ligaJoined = ValueNotifier<bool>(true);
+
+  static void setJoined(dynamic value) => ligaJoined.value = value != false;
 
   static void set(dynamic value) {
     if (value == null) return;

@@ -67,6 +67,8 @@ class Routes {
   // Matematik Liga va haftalik test (argument: attempt id)
   static const liga='/liga';
   static const ligaTest='/liga_test';
+  static const ligaSeasons='/liga_seasons';
+  static const ligaHistory='/liga_history';
   static const battle='/battle';
   static const battleRoom='/battle_room';
   static const battleHistory='/battle_history';

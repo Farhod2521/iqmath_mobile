@@ -9,6 +9,7 @@ import '../../core/widgets/dash_ui.dart';
 import '../../core/widgets/top_notification.dart';
 import '../../router/name_routes.dart';
 import '../home/presentation/pages/home/widgets/payment_screen.dart';
+import '../rewards/daily_reward_dialog.dart';
 import 'liga_api.dart';
 import 'liga_join_sheet.dart';
 import 'liga_texts.dart';
@@ -99,6 +100,10 @@ class _LigaPageState extends State<LigaPage> {
       await LigaApi.join(seasonId, grade);
       await _load();
     });
+    // Ligaga qo'shilgach gol yig'ish boshlanadi: bugungi gol darhol beriladi (konfetti bilan)
+    if (!mounted) return;
+    DailyReward.reset();
+    await DailyReward.claimAndShow(context, locale);
   }
 
   void _start(int testId) => _run(() async {
@@ -145,7 +150,14 @@ class _LigaPageState extends State<LigaPage> {
     }
     final data = _data ?? {};
     final season = data['season'] is Map ? asMap(data['season']) : null;
-    if (season == null) return [LigaHero(title: lt(locale, 'title'), subtitle: '', onBack: back), _emptySeason(locale)];
+    if (season == null) {
+      return [
+        LigaHero(title: lt(locale, 'title'), subtitle: '', onBack: back),
+        const SizedBox(height: 14),
+        _menu(locale),
+        _emptySeason(locale),
+      ];
+    }
 
     final closed = season['is_closed'] == true;
     final joined = data['joined'] == true;
@@ -159,6 +171,8 @@ class _LigaPageState extends State<LigaPage> {
     return [
       LigaHero(title: lt(locale, 'title'), subtitle: subtitle, onBack: back),
       const SizedBox(height: 14),
+      _menu(locale),
+      const SizedBox(height: 14),
       _stats(locale, season, data),
       if (!joined && !closed) ...[const SizedBox(height: 14), _joinCard(locale, season, data)],
       const SizedBox(height: 14),
@@ -169,6 +183,60 @@ class _LigaPageState extends State<LigaPage> {
       _prizes(locale, season),
       ..._pastWinners(locale, grade),
     ];
+  }
+
+  /// Liga bo'limlari (saytdagi Liga menyusi kabi): mavsumlar/g'oliblar va shaxsiy tarix
+  Widget _menu(String locale) {
+    Widget tile(IconData icon, Color color, Color bg, String title, String text, String route) => Expanded(
+          child: Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () async {
+                await Navigator.of(context).pushNamed(route);
+                if (mounted) _load();
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: LigaColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        LigaIconBox(icon: icon, size: 40, color: color, bg: bg),
+                        const Spacer(),
+                        const Icon(Icons.chevron_right_rounded, color: LigaColors.muted),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: LigaColors.ink)),
+                    const SizedBox(height: 2),
+                    Text(text,
+                        maxLines: 2,
+                        style: const TextStyle(fontSize: 12, color: LigaColors.muted, height: 1.3)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+    return Row(
+      children: [
+        tile(Icons.workspace_premium_rounded, LigaColors.amber, const Color(0xFFFFF4DB), lt(locale, 'mSeasons'),
+            lt(locale, 'mSeasonsText'), Routes.ligaSeasons),
+        const SizedBox(width: 10),
+        tile(Icons.history_rounded, LigaColors.primary, LigaColors.primarySoft, lt(locale, 'mHistory'),
+            lt(locale, 'mHistoryText'), Routes.ligaHistory),
+      ],
+    );
   }
 
   Widget _emptySeason(String locale) {

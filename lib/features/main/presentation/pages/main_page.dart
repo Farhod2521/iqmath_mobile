@@ -13,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:my_flutter_template/services/refresh_token_service.dart';
 import 'package:my_flutter_template/core/app_bloc/app_bloc.dart';
 import 'package:my_flutter_template/features/rewards/daily_reward_dialog.dart';
+import 'package:my_flutter_template/features/liga/liga_announce.dart';
 import 'package:my_flutter_template/features/rewards/rewards_api.dart';
 
 import '../../../../router/app_routes.dart';
@@ -64,7 +65,10 @@ class _MainPageState extends State<MainPage> with TickerProviderStateMixin {
       if (!mounted) return;
       final locale = context.read<AppBloc>().state.appLocale ?? 'uz';
       TariffService.load(locale: locale);
-      DailyReward.claimAndShow(context, locale);
+      // Avval kundalik gol oynasi, keyin (ligaga qo'shilmagan bo'lsa) yangi mavsum e'loni
+      DailyReward.claimAndShow(context, locale).then((_) {
+        if (mounted) LigaAnnounce.showIfNeeded(context, locale);
+      });
     });
   }
 

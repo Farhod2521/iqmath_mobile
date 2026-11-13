@@ -31,6 +31,8 @@ import 'package:my_flutter_template/features/profile/presentation/pages/balls_pa
 import 'package:my_flutter_template/features/rewards/wallet_history_page.dart';
 import 'package:my_flutter_template/features/liga/liga_page.dart';
 import 'package:my_flutter_template/features/liga/liga_test_page.dart';
+import 'package:my_flutter_template/features/liga/liga_seasons_page.dart';
+import 'package:my_flutter_template/features/liga/liga_history_page.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/change_password_page.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/chat_page.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/coupons_page.dart';
@@ -380,6 +382,14 @@ class AppRoutes {
         Routes.liga => CupertinoPageRoute(
             settings: settings,
             builder: (_) => const LigaPage(),
+          ),
+        Routes.ligaSeasons => CupertinoPageRoute(
+            settings: settings,
+            builder: (_) => const LigaSeasonsPage(),
+          ),
+        Routes.ligaHistory => CupertinoPageRoute(
+            settings: settings,
+            builder: (_) => const LigaHistoryPage(),
           ),
         Routes.ligaTest => MaterialPageRoute(
             settings: settings,

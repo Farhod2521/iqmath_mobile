@@ -11,6 +11,7 @@ import 'package:my_flutter_template/features/profile/presentation/arguments/edit
 import 'package:my_flutter_template/injector_container.dart';
 import 'package:my_flutter_template/core/widgets/student_stats_card.dart';
 import 'package:my_flutter_template/features/rewards/daily_reward_dialog.dart';
+import 'package:my_flutter_template/features/liga/liga_announce.dart';
 import 'package:my_flutter_template/features/rewards/rewards_api.dart';
 import 'package:my_flutter_template/features/rewards/rewards_texts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -305,7 +306,9 @@ class _ProfilePageState extends State<ProfilePage> {
               await localSource.clear();
               // Boshqa hisob bilan kirganda gol, tarif va kundalik mukofot qaytadan tekshiriladi
               DailyReward.reset();
+              LigaAnnounce.reset();
               GolStore.total.value = null;
+              GolStore.ligaJoined.value = true;
               TariffService.isPro.value = null;
               localSource.setPhoneNumber(phoneNumber);
               localSource.setUserPassword(password);
@@ -346,11 +349,12 @@ class _ProfilePageState extends State<ProfilePage> {
                 _buildHeader(locale, fullName, phone, initial),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: ValueListenableBuilder<int?>(
-                    valueListenable: GolStore.total,
-                    builder: (context, gol, _) => StudentStatsCard(
+                  child: ListenableBuilder(
+                    listenable: Listenable.merge([GolStore.total, GolStore.ligaJoined]),
+                    builder: (context, _) => StudentStatsCard(
                       locale: locale,
-                      gol: gol,
+                      gol: GolStore.total.value,
+                      showGol: GolStore.ligaJoined.value,
                       score: _statsLoading ? null : _score,
                       coin: _statsLoading ? null : _coin,
                       sum: _statsLoading ? null : _sum,
