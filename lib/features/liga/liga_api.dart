@@ -50,6 +50,17 @@ class LigaApi {
   static Future<void> join(int seasonId, int gradeId) =>
       _dio.post('$_base/seasons/$seasonId/join/', data: {'grade': gradeId, 'accept_rules': true});
 
+  /// Liga kirish to'lovi (mavsumda payment_required yoqilgan bo'lsa): Multicard checkout havolasi
+  static Future<String?> payEntry(int seasonId) async {
+    final data = asMap((await _dio.post(
+      '${Constants.baseUrl}/payments/liga-entry/',
+      data: {'season_id': seasonId},
+    ))
+        .data);
+    final url = data['checkout_url']?.toString();
+    return (url == null || url.isEmpty) ? null : url;
+  }
+
   /// Testni boshlaydi (yoki boshlangan urinishni qaytaradi)
   static Future<Map<String, dynamic>> start(int testId) async =>
       asMap((await _dio.post('$_base/tests/$testId/start/')).data);
@@ -71,7 +82,7 @@ class LigaApi {
   static String? errorText(Object e) {
     if (e is DioException && e.response?.data is Map) {
       final body = e.response!.data as Map;
-      final text = '${body['message'] ?? body['detail'] ?? ''}'.trim();
+      final text = '${body['message'] ?? body['detail'] ?? body['error'] ?? ''}'.trim();
       return text.isEmpty ? null : text;
     }
     return null;

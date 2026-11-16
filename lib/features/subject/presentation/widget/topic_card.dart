@@ -18,6 +18,7 @@ import '../../data/models/chapter_model.dart';
 import 'package:http/http.dart' as http;
 
 import '../../data/models/topic_model.dart';
+import '../../../home/presentation/pages/home/widgets/payment_screen.dart' show TarifRejasiScreen;
 
 class ChapterTopicsSheet extends StatefulWidget {
   final ChapterModel chapter;
@@ -538,18 +539,9 @@ class _TopicCardState extends State<_TopicCard> {
     final videoUrl = widget.locale == 'ru' ? widget.topic.videoUrlRu : widget.topic.videoUrlUz;
 
     if (widget.topic.isLocked) {
-      showCupertinoDialog(
-        context: context,
-        builder: (context) => CupertinoAlertDialog(
-          title: Text(ChapterTopicsTranslations.t('topicLocked', widget.locale)),
-          content: Text(ChapterTopicsTranslations.t('topicLockedMessage', widget.locale)),
-          actions: [
-            CupertinoDialogAction(
-              child: Text(ChapterTopicsTranslations.t('ok', widget.locale)),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
-        ),
+      // Mavzular faqat obuna sababli yopiladi (demo darslardan tashqari) — tarif oynasi ochiladi
+      Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute(builder: (_) => const TarifRejasiScreen()),
       );
       return;
     }

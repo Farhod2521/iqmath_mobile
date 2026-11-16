@@ -2498,6 +2498,7 @@ import '../../../diagnostics/presentation/diagnostic_texts.dart';
 import '../../../diagnostics/presentation/pages/diagnostic_results_page.dart';
 import '../../../home/presentation/pages/home_parent/widget/parent_assimilation_page.dart';
 import '../../../rewards/rewards_api.dart';
+import '../../../home/presentation/pages/home/widgets/payment_screen.dart' show TarifRejasiScreen;
 
 class QuestionPage extends StatefulWidget {
   final QuestionPageArguments arguments;
@@ -2581,6 +2582,12 @@ class _QuestionPageState extends State<QuestionPage> with QuestionMixin {
           _isLoading = false;
           _initializeControllers();
         });
+      } else if (response.statusCode == 403 && mounted) {
+        // Demo darslar tugagan — obuna kerak: savollar o'rniga tarif oynasi
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const TarifRejasiScreen()),
+        );
+        return;
       } else {
         setState(() {
           _errorMessage = 'error';
@@ -2588,6 +2595,7 @@ class _QuestionPageState extends State<QuestionPage> with QuestionMixin {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'network';
         _isLoading = false;
@@ -2758,6 +2766,61 @@ class _QuestionPageState extends State<QuestionPage> with QuestionMixin {
     Future.delayed(const Duration(milliseconds: 100), () {
       _activateFirstField();
     });
+  }
+
+  /// Joriy savolning birinchi javob maydoni (test savolida null)
+  int? get _currentFirstFieldId {
+    if (_questions.isEmpty || _currentQuestionIndex >= _questions.length) return null;
+    final q = _questions[_currentQuestionIndex];
+    switch (q['question_type'] as String?) {
+      case 'text':
+        return q['id'] as int?;
+      case 'composite':
+        final subs = q['sub_questions'] as List<dynamic>?;
+        return (subs != null && subs.isNotEmpty) ? subs[0]['id'] as int? : null;
+      default:
+        return null;
+    }
+  }
+
+  /// Klaviatura ustidagi panel: yopish tugmasi
+  Widget _keyboardCloseBar(String? locale) {
+    return Container(
+      height: 40,
+      color: const Color(0xFFD1D1D6),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      alignment: Alignment.centerRight,
+      child: TextButton.icon(
+        onPressed: _hideKeyboard,
+        icon: const Icon(Icons.keyboard_hide_rounded, size: 20, color: Color(0xFF1C1C1E)),
+        label: Text(
+          locale == 'ru' ? 'Скрыть' : 'Yopish',
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1C1C1E)),
+        ),
+      ),
+    );
+  }
+
+  /// Klaviatura yopiq bo'lganda — qayta ochish tugmasi
+  Widget _keyboardOpenBar(String? locale) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: _activateFirstField,
+          icon: const Icon(Icons.keyboard_rounded, size: 20),
+          label: Text(locale == 'ru' ? 'Открыть клавиатуру' : 'Klaviaturani ochish'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF007AFF),
+            side: const BorderSide(color: Color(0xFF007AFF)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            padding: const EdgeInsets.symmetric(vertical: 10),
+          ),
+        ),
+      ),
+    );
   }
 
   void _activateFirstField() {
@@ -4273,11 +4336,14 @@ class _QuestionPageState extends State<QuestionPage> with QuestionMixin {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (!hasActiveKeyboard && _currentFirstFieldId != null)
+                        _keyboardOpenBar(locale),
                       _buildBottomBar(locale),
                       if (hasActiveKeyboard)
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            _keyboardCloseBar(locale),
                             Container(
                               height: 320,
                               color: const Color(0xFFD1D1D6),

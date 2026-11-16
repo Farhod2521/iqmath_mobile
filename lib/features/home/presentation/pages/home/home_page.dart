@@ -12,6 +12,8 @@ import 'package:my_flutter_template/features/subject/presentation/widget/topic_c
     show QuestionPageArguments;
 import 'package:my_flutter_template/generated/assets.dart';
 import 'package:my_flutter_template/features/home/presentation/widgets/notifications_popup.dart';
+import 'package:my_flutter_template/features/home/presentation/pages/home/widgets/payment_screen.dart'
+    show TarifRejasiScreen;
 import 'package:my_flutter_template/injector_container.dart';
 import 'package:my_flutter_template/router/app_routes.dart';
 import 'package:my_flutter_template/router/name_routes.dart';
@@ -297,6 +299,8 @@ class _HomePageState extends State<HomePage> {
                           height: 1.2,
                         ),
                       ),
+                      const SizedBox(height: 6),
+                      _buyPlanButton(locale),
                     ],
                   ),
                 ),
@@ -400,6 +404,43 @@ class _HomePageState extends State<HomePage> {
             ),
             child: Center(child: child),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Ism ostidagi "Tarif sotib olish" tugmasi — to'lov oynasiga to'g'ridan-to'g'ri kirish
+  Widget _buyPlanButton(String locale) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        Navigator.of(mainRootNavigatorKey.currentContext!).push(
+          MaterialPageRoute(builder: (_) => const TarifRejasiScreen()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [Color(0xFFFFB020), Color(0xFFFF7A00)]),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFF7A00).withOpacity(0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.workspace_premium_rounded, size: 15, color: Colors.white),
+            const SizedBox(width: 4),
+            Text(
+              locale == 'ru' ? 'Купить тариф' : 'Tarif sotib olish',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+            ),
+          ],
         ),
       ),
     );

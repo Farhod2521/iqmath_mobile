@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_bloc/app_bloc.dart';
 import '../../core/widgets/dash_ui.dart';
@@ -297,17 +298,47 @@ class _LigaPageState extends State<LigaPage> {
     );
   }
 
+  /// Liga kirish to'lovi: Multicard sahifasi brauzerda ochiladi, qaytgach sahifa yangilanadi
+  Future<void> _payEntry(int seasonId) => _run(() async {
+        final url = await LigaApi.payEntry(seasonId);
+        if (url == null) throw Exception();
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      });
+
   Widget _joinCard(String locale, Map<String, dynamic> season, Map<String, dynamic> data) {
     final active = data['subscription_active'] == true;
+    // Mavsumda alohida liga to'lovi yoqilgan bo'lsa — tarif o'rniga liga to'lovi
+    final paidEntry = data['payment_required'] == true;
+    final fee = (data['entry_fee'] as num?)?.round() ?? 0;
+    final feeText = fee.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ' ');
     return LigaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(lt(locale, 'joinTitle'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: LigaColors.ink)),
           const SizedBox(height: 4),
-          Text(lt(locale, active ? 'joinText' : 'needPay'),
+          Text(
+              !active && paidEntry
+                  ? (locale == 'ru'
+                      ? 'Участие в этом сезоне платное: $feeText сум. После оплаты нажмите «Участвовать».'
+                      : "Bu mavsumda qatnashish pullik: $feeText so'm. To'lovdan keyin «Qatnashish»ni bosing.")
+                  : lt(locale, active ? 'joinText' : 'needPay'),
               style: const TextStyle(fontSize: 13.5, color: LigaColors.muted, height: 1.4)),
           const SizedBox(height: 14),
+          if (!active && paidEntry) ...[
+            LigaButton(
+              label: locale == 'ru' ? 'Оплатить $feeText сум' : "$feeText so'm to'lash",
+              busy: _busy,
+              expand: true,
+              onTap: () => _payEntry(asInt(season['id'])),
+            ),
+            const SizedBox(height: 8),
+            LigaButton(
+              label: locale == 'ru' ? 'Я оплатил — обновить' : "To'ladim — yangilash",
+              expand: true,
+              onTap: _load,
+            ),
+          ] else
           active
               ? LigaButton(label: lt(locale, 'join'), busy: _busy, expand: true, onTap: () => _join(asInt(season['id']), locale))
               : LigaButton(
