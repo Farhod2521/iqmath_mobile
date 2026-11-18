@@ -9,6 +9,49 @@ import 'pin_indicator.dart';
 
 const Color _kMuted = Color(0xFF64748B);
 const Color _kPrimary = Color(0xFF2563EB);
+const Color _kTitle = Color(0xFF0F172A);
+
+/// Sarlavha ostidagi izoh matni (holatga va tilga qarab).
+String _subtitle(AppLocalization l, String title, String lang) {
+  const texts = {
+    'create': {
+      'uz': "Ilovani himoya qilish uchun 4 xonali PIN kod o'ylab toping",
+      'ru': 'Придумайте 4-значный PIN-код для защиты приложения',
+      'en': 'Create a 4-digit PIN code to protect the app',
+    },
+    'confirm': {
+      'uz': 'Tasdiqlash uchun PIN kodni qayta kiriting',
+      'ru': 'Повторите PIN-код для подтверждения',
+      'en': 'Re-enter your PIN code to confirm',
+    },
+    'old': {
+      'uz': "O'zgartirish uchun joriy PIN kodingizni kiriting",
+      'ru': 'Введите текущий PIN-код, чтобы изменить его',
+      'en': 'Enter your current PIN code to change it',
+    },
+    'new': {
+      'uz': 'Yangi 4 xonali PIN kodni kiriting',
+      'ru': 'Введите новый 4-значный PIN-код',
+      'en': 'Enter a new 4-digit PIN code',
+    },
+    'enter': {
+      'uz': 'Hisobingizga kirish uchun PIN kodni kiriting',
+      'ru': 'Введите PIN-код, чтобы войти в аккаунт',
+      'en': 'Please enter your PIN code to access your account',
+    },
+  };
+  final key = title == l.create_pin
+      ? 'create'
+      : title == l.confirm_pin
+          ? 'confirm'
+          : title == l.enter_old_pin_code
+              ? 'old'
+              : title == l.enter_new_pin_code
+                  ? 'new'
+                  : 'enter';
+  final byLang = texts[key]!;
+  return byLang[lang] ?? byLang['uz']!;
+}
 
 class ScreenLockUpperLayout extends StatefulWidget {
   final String title;
@@ -52,20 +95,58 @@ class _ScreenLockUpperLayoutState extends State<ScreenLockUpperLayout> {
   @override
   Widget build(BuildContext context) {
     final localization = AppLocalization.of(context);
-    return Column(
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          widget.title,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-            color: _kMuted,
+        Container(
+          height: 76,
+          width: 76,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAF1FF),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: _kPrimary, width: 2.2),
+          ),
+          child: Transform.rotate(
+            angle: -0.6,
+            child: const Icon(Icons.vpn_key_rounded, color: _kPrimary, size: 38),
           ),
         ),
-        const Gap(28),
+        const Gap(22),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            widget.title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: _kTitle,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ),
+        const Gap(8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Text(
+            _subtitle(localization, widget.title,
+                Localizations.localeOf(context).languageCode),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: _kMuted,
+              height: 1.4,
+            ),
+          ),
+        ),
+        const Gap(26),
         PinIndicator(
           isCorrectPin: widget.isCorrectPin,
           pin: widget.pin,
@@ -141,6 +222,9 @@ class _ScreenLockUpperLayoutState extends State<ScreenLockUpperLayout> {
               },
             ),
       ],
+          ),
+        ),
+      ),
     );
   }
 

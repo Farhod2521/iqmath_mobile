@@ -411,6 +411,20 @@ class _HomePageState extends State<HomePage> {
 
   /// Ism ostidagi "Tarif sotib olish" tugmasi — to'lov oynasiga to'g'ridan-to'g'ri kirish
   Widget _buyPlanButton(String locale) {
+    // O'ngdagi chiplar (gol, qo'ng'iroq, til) joy egallaganda ustun torayadi —
+    // shunda qisqa yozuv ko'rsatiladi, baribir sig'masa ellipsis bilan qisqaradi.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 140;
+        final label = locale == 'ru'
+            ? (compact ? 'Тариф' : 'Купить тариф')
+            : (compact ? 'Tarif' : 'Tarif sotib olish');
+        return _buyPlanButtonBody(label);
+      },
+    );
+  }
+
+  Widget _buyPlanButtonBody(String label) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -436,9 +450,13 @@ class _HomePageState extends State<HomePage> {
           children: [
             const Icon(Icons.workspace_premium_rounded, size: 15, color: Colors.white),
             const SizedBox(width: 4),
-            Text(
-              locale == 'ru' ? 'Купить тариф' : 'Tarif sotib olish',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
             ),
           ],
         ),

@@ -61,6 +61,50 @@ class _TarifRejasiScreenState extends State<TarifRejasiScreen> {
     }
   }
 
+  // ───────────────────────── UI ─────────────────────────
+  static const _kInk = Color(0xFF0F172A);
+  static const _kMuted = Color(0xFF64748B);
+  static const _kBlue = Color(0xFF1D6BFF);
+  static const _kPurple = Color(0xFF8B5CF6);
+  static const _kGreen = Color(0xFF16A34A);
+  static const _kBg = Color(0xFFF3F6FC);
+
+  int? _selectedMonths;
+
+  /// Bazadagi tariflarning oylari (1, 3, 6, 12 ...), o'sish tartibida
+  List<int> get _monthOptions {
+    final list = plans.map((p) => p.months).toSet().toList()..sort();
+    return list;
+  }
+
+  /// Tab ustidagi "-6%" — shu muddatni olsa 1 oylikka nisbatan qancha tejaladi.
+  /// 1 oylik tarif bo'lmasa — eng katta chegirma foizi.
+  int _tabSaving(int months) {
+    if (months <= 1) return 0;
+    int best = 0;
+    for (final p in plans.where((p) => p.months == months)) {
+      final base = plans.where((b) => b.months == 1 && _isPro(b) == _isPro(p));
+      if (base.isNotEmpty && base.first.salePrice > 0) {
+        final full = base.first.salePrice * months;
+        final s = ((1 - p.salePrice / full) * 100).round();
+        if (s > best) best = s;
+      } else if (p.discountPercent > best) {
+        best = p.discountPercent;
+      }
+    }
+    return best;
+  }
+
+  bool _isPro(SubscriptionPlan p) {
+    final name = '${p.nameUz ?? ''} ${p.nameRu ?? ''}'.toLowerCase();
+    return name.contains('pro');
+  }
+
+  String _money(num v) => v.toInt().toString().replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]} ');
+
+  String _som(String? locale) => locale == 'ru' ? 'сум' : "so'm";
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AppBloc, AppState>(
@@ -68,88 +112,658 @@ class _TarifRejasiScreenState extends State<TarifRejasiScreen> {
         final locale = appState.appLocale;
 
         return Scaffold(
-          backgroundColor: const Color(0xFFF5F7FA),
-          appBar: AppBar(
-            backgroundColor: Colors.white,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.close, color: Colors.black),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: Text(
-              PaymentTranslations.t('selectPlan', locale),
-              style: const TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.w600,
-                fontSize: 18,
-              ),
-            ),
-          ),
-          body: isLoading
-              ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF5B7CFF)))
-              : errorMessage != null
-              ? Center(
+          backgroundColor: _kBg,
+          body: SafeArea(
+            bottom: false,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline,
-                    size: 64, color: Colors.grey[400]),
-                const SizedBox(height: 16),
-                Text(
-                  errorMessage == 'error'
-                      ? PaymentTranslations.t(
-                      'errorLoadingData', locale)
-                      : PaymentTranslations.t(
-                      'internetError', locale),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: Colors.grey[600], fontSize: 16),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      isLoading = true;
-                      errorMessage = null;
-                    });
-                    fetchSubscriptionPlans();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5B7CFF),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 32, vertical: 12),
-                  ),
-                  child: Text(
-                      PaymentTranslations.t('retryButton', locale)),
-                ),
+                _topBar(locale),
+                Expanded(child: _body(locale)),
               ],
-            ),
-          )
-              : RefreshIndicator(
-            onRefresh: fetchSubscriptionPlans,
-            color: const Color(0xFF5B7CFF),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: plans.length,
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _buildPricingCard(
-                    context: context,
-                    plan: plans[index],
-                    locale: locale,
-                    onTap: () {
-                      _showPaymentBottomSheet(
-                          context, plans[index], locale);
-                    },
-                  ),
-                );
-              },
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _topBar(String? locale) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 6, 16, 6),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: _kInk, size: 26),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              PaymentTranslations.t('selectPlan', locale),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _kInk,
+                fontWeight: FontWeight.w800,
+                fontSize: 21,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _body(String? locale) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator(color: _kBlue));
+    }
+    if (errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.wifi_off_rounded, size: 60, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                errorMessage == 'error'
+                    ? PaymentTranslations.t('errorLoadingData', locale)
+                    : PaymentTranslations.t('internetError', locale),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: _kMuted, fontSize: 16),
+              ),
+              const SizedBox(height: 24),
+              _primaryButton(
+                label: PaymentTranslations.t('retryButton', locale),
+                onTap: () {
+                  setState(() {
+                    isLoading = true;
+                    errorMessage = null;
+                  });
+                  fetchSubscriptionPlans();
+                },
+                showArrow: false,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final options = _monthOptions;
+    if (options.isEmpty) return const SizedBox.shrink();
+    final selected =
+        options.contains(_selectedMonths) ? _selectedMonths! : options.first;
+    final visible = plans.where((p) => p.months == selected).toList()
+      ..sort((a, b) => (_isPro(a) ? 1 : 0).compareTo(_isPro(b) ? 1 : 0));
+
+    return RefreshIndicator(
+      onRefresh: fetchSubscriptionPlans,
+      color: _kBlue,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+        children: [
+          _monthTabs(options, selected, locale),
+          const SizedBox(height: 18),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: Column(
+              key: ValueKey(selected),
+              children: [
+                for (final plan in visible) ...[
+                  _planCard(plan, locale),
+                  const SizedBox(height: 18),
+                ],
+              ],
+            ),
+          ),
+          _securePayment(locale),
+        ],
+      ),
+    );
+  }
+
+  Widget _monthTabs(List<int> options, int selected, String? locale) {
+    return Container(
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1E3A8A).withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: options.map((m) {
+          final on = m == selected;
+          final saving = _tabSaving(m);
+          return Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _selectedMonths = m),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                height: 46,
+                decoration: BoxDecoration(
+                  gradient: on
+                      ? const LinearGradient(
+                          colors: [Color(0xFF2F7BFF), Color(0xFF1558E8)])
+                      : null,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: on
+                      ? [
+                          BoxShadow(
+                            color: _kBlue.withOpacity(0.35),
+                            blurRadius: 12,
+                            offset: const Offset(0, 5),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          locale == 'ru' ? '$m мес' : '$m oylik',
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w700,
+                            color: on ? Colors.white : _kInk,
+                          ),
+                        ),
+                        if (saving > 0) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: on
+                                  ? Colors.white.withOpacity(0.22)
+                                  : const Color(0xFFDCFCE7),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '-$saving%',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: on ? Colors.white : _kGreen,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _planCard(SubscriptionPlan plan, String? locale) {
+    final pro = _isPro(plan);
+    final name = (locale == 'ru' ? plan.nameRu : plan.nameUz) ??
+        plan.nameUz ??
+        (pro ? 'Start Pro' : 'Start');
+    final tagline = pro
+        ? (locale == 'ru'
+            ? 'Больше возможностей, выше результат'
+            : "Ko'proq imkoniyat, yuqori natija")
+        : (locale == 'ru'
+            ? 'Идеальный выбор для старта'
+            : 'Boshlash uchun ideal tanlov');
+    final original = double.tryParse(plan.pricePerMonth) ?? 0;
+    final hasDiscount = plan.discountPercent > 0 && original > plan.salePrice;
+    final badge = plan.category != null
+        ? (locale == 'ru' ? plan.category!.titleRu : plan.category!.titleUz)
+        : null;
+
+    final card = Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(26),
+        gradient: pro
+            ? const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFFFFFFF),
+                  Color(0xFFF4F1FF),
+                  Color(0xFFEFF5FF)
+                ],
+              )
+            : null,
+        color: pro ? null : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: (pro ? _kPurple : const Color(0xFF1E3A8A))
+                .withOpacity(pro ? 0.14 : 0.07),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Illyustratsiya (o'ng yuqori)
+          Positioned(
+            right: 8,
+            top: pro ? 44 : 14,
+            child: IgnorePointer(
+              child: Image.asset(
+                pro ? 'assets/images/join_trophy.png' : 'assets/images/1.png',
+                width: pro ? 150 : 140,
+                height: pro ? 150 : 140,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          if (badge != null)
+            Positioned(
+              right: 0,
+              top: 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 8, 16, 8),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                      colors: [Color(0xFF2F7BFF), Color(0xFF1558E8)]),
+                  borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(26),
+                    bottomLeft: Radius.circular(18),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.workspace_premium_rounded,
+                        color: Colors.white, size: 17),
+                    const SizedBox(width: 6),
+                    Text(
+                      badge,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, badge != null ? 26 : 20, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Ikonka + nom
+                Row(
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: pro
+                            ? const LinearGradient(colors: [
+                                Color(0xFF8B5CF6),
+                                Color(0xFFA78BFA)
+                              ])
+                            : null,
+                        color: pro ? null : const Color(0xFFEAF1FF),
+                      ),
+                      child: Icon(
+                        pro
+                            ? Icons.workspace_premium_outlined
+                            : Icons.view_in_ar_rounded,
+                        color: pro ? Colors.white : _kBlue,
+                        size: 27,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 110),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 23,
+                                fontWeight: FontWeight.w800,
+                                color: _kInk,
+                                letterSpacing: -0.4,
+                              ),
+                            ),
+                            Text(
+                              tagline,
+                              style: const TextStyle(
+                                  fontSize: 13, color: _kMuted, height: 1.3),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Muddat chipi
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.calendar_month_rounded,
+                          size: 16, color: _kBlue),
+                      const SizedBox(width: 6),
+                      Text(
+                        locale == 'ru'
+                            ? plan.monthsDisplayRu
+                            : plan.monthsDisplay,
+                        style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: _kInk),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Eski narx + chegirma
+                if (hasDiscount)
+                  Row(
+                    children: [
+                      Text(
+                        '${_money(original)} ${_som(locale)}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFF94A3B8),
+                          decoration: TextDecoration.lineThrough,
+                          decorationColor: Color(0xFF94A3B8),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE4E6),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '-${plan.discountPercent}%',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFFE11D48),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 2),
+                // Narx
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${_money(plan.salePrice)} ${_som(locale)}',
+                    style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w900,
+                      color: _kInk,
+                      letterSpacing: -1,
+                      height: 1.15,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Imkoniyatlar
+                ...plan.benefits.map((b) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: b.isSelected
+                                  ? const Color(0xFF22C55E)
+                                  : const Color(0xFFE2E8F0),
+                            ),
+                            child: Icon(
+                              b.isSelected
+                                  ? Icons.check_rounded
+                                  : Icons.close_rounded,
+                              color: b.isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF94A3B8),
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              locale == 'ru' ? b.titleRu : b.titleUz,
+                              style: TextStyle(
+                                fontSize: 15.5,
+                                fontWeight: b.isSelected
+                                    ? FontWeight.w500
+                                    : FontWeight.w400,
+                                color: b.isSelected
+                                    ? _kInk
+                                    : const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+                const SizedBox(height: 10),
+                pro
+                    ? _primaryButton(
+                        label: _buyLabel(locale),
+                        onTap: () =>
+                            _showPaymentBottomSheet(context, plan, locale),
+                      )
+                    : _outlineButton(
+                        label: _buyLabel(locale),
+                        onTap: () =>
+                            _showPaymentBottomSheet(context, plan, locale),
+                      ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (!pro) return card;
+    // Pro karta — ko'k→binafsha gradient ramka
+    return Container(
+      padding: const EdgeInsets.all(1.6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(27.6),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF60A5FA), Color(0xFFA78BFA), Color(0xFFF0ABFC)],
+        ),
+      ),
+      child: card,
+    );
+  }
+
+  String _buyLabel(String? locale) =>
+      locale == 'ru' ? 'Купить тариф' : 'Tarifni sotib olish';
+
+  Widget _primaryButton(
+      {required String label,
+      required VoidCallback onTap,
+      bool showArrow = true}) {
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        height: 56,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+              colors: [Color(0xFF1D6BFF), Color(0xFF8B5CF6)]),
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+                color: _kBlue.withOpacity(0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 8)),
+          ],
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(30),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(label,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700)),
+                if (showArrow) ...[
+                  const SizedBox(width: 12),
+                  const Icon(Icons.arrow_forward_rounded,
+                      color: Colors.white, size: 22),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _outlineButton({required String label, required VoidCallback onTap}) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(30),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(30),
+        child: Container(
+          height: 56,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: _kBlue, width: 1.6),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(label,
+                  style: const TextStyle(
+                      color: _kBlue,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700)),
+              const SizedBox(width: 12),
+              const Icon(Icons.arrow_forward_rounded, color: _kBlue, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _securePayment(String? locale) {
+    Widget cardChip(String text, Color bg, Color fg) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+          decoration:
+              BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+          child: Text(text,
+              style: TextStyle(
+                  color: fg,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2)),
+        );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1E3A8A).withOpacity(0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF1FF),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.verified_user_outlined,
+                color: _kBlue, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  locale == 'ru' ? 'Безопасная оплата' : "Xavfsiz to'lov",
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w700, color: _kInk),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  locale == 'ru'
+                      ? 'Платежи защищены SSL'
+                      : "To'lovlaringiz SSL orqali himoyalangan",
+                  style: const TextStyle(fontSize: 12.5, color: _kMuted),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              cardChip('UZCARD', const Color(0xFFEFF4FF),
+                  const Color(0xFF1E3A8A)),
+              const SizedBox(height: 6),
+              cardChip(
+                  'HUMO', const Color(0xFF0F2A44), const Color(0xFFF5C451)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -160,263 +774,6 @@ class _TarifRejasiScreenState extends State<TarifRejasiScreen> {
       barrierColor: Colors.black.withOpacity(0.5),
       builder: (context) => CouponDialog(plan: plan, locale: locale),
     );
-  }
-
-  Widget _buildPricingCard({
-    required BuildContext context,
-    required SubscriptionPlan plan,
-    required String? locale,
-    required VoidCallback onTap,
-  }) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              width: 2,
-              color: const Color(0xFF5B7CFF).withOpacity(0.3),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Plan name with icon
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF5B7CFF).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.calendar_today_outlined,
-                      color: Color(0xFF5B7CFF),
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    locale == 'ru' ? plan.monthsDisplayRu : plan.monthsDisplay,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Duration subtitle
-              Text(
-                locale == 'ru'
-                    ? 'Подписка на ${plan.months} ${_getMonthWord(plan.months, true)}'
-                    : '${plan.months} oylik obuna',
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Price
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    plan.getFormattedSalePrice(),
-                    style: const TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.black,
-                      height: 1,
-                      letterSpacing: -1,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Text(
-                      PaymentTranslations.t('som', locale),
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              // Original price (strikethrough)
-              if (plan.discountPercent > 0) ...[
-                const SizedBox(height: 8),
-                Text(
-                  '${plan.getFormattedOriginalPrice()} ${PaymentTranslations.t('som', locale)}',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey[400],
-                    decoration: TextDecoration.lineThrough,
-                    decorationThickness: 1.5,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 20),
-              // Benefits
-              ...plan.benefits.map((benefit) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: benefit.isSelected
-                              ? const Color(0xFF10B981)
-                              : Colors.grey[300],
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          benefit.isSelected ? Icons.check : Icons.close,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          locale == 'ru' ? benefit.titleRu : benefit.titleUz,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: benefit.isSelected
-                                ? Colors.black
-                                : Colors.grey[500],
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-              const SizedBox(height: 8),
-              // Buy button
-              InkWell(
-                onTap: onTap,
-                borderRadius: BorderRadius.circular(30),
-                child: Container(
-                  width: double.infinity,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF5B7CFF), Color(0xFFA855F7)],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Center(
-                    child: Text(
-                      PaymentTranslations.t('buyPlan', locale),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Top badge (Best or Discount)
-        if (plan.category != null)
-          Positioned(
-            top: -12,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF5B7CFF), Color(0xFFA855F7)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  locale == 'ru'
-                      ? plan.category!.titleRu
-                      : plan.category!.titleUz,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        // Top-right discount badge
-        if (plan.discountPercent > 0)
-          Positioned(
-            top: 12,
-            right: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 7,
-              ),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF5B7CFF), Color(0xFFA855F7)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.local_fire_department,
-                    color: Color(0xFFFF6B35),
-                    size: 18,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '-${plan.discountPercent}%',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  String _getMonthWord(int months, bool isRussian) {
-    if (!isRussian) return 'oy';
-    if (months == 1) return 'месяц';
-    if (months >= 2 && months <= 4) return 'месяца';
-    return 'месяцев';
   }
 }
 

@@ -60,18 +60,34 @@ class _ScreenLockPageState extends State<ScreenLockPage> {
             ? ScreenLockStatus.check
             : ScreenLockStatus.create);
 
+    final canPop = Navigator.of(context).canPop();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FC),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
+            SizedBox(
+              height: 52,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: canPop
+                    ? IconButton(
+                        padding: const EdgeInsets.only(left: 12),
+                        icon: const Icon(Icons.arrow_back_rounded,
+                            color: Color(0xFF0F172A), size: 26),
+                        onPressed: () => Navigator.of(context).maybePop(),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ),
             Expanded(
               child: UpperTextWidget(status: status),
             ),
             SizedBox(
               height: mediaQuery.size.height > 800
-                  ? mediaQuery.size.height * 0.46
-                  : mediaQuery.size.height * 0.54,
+                  ? mediaQuery.size.height * 0.42
+                  : mediaQuery.size.height * 0.48,
               child: KeyboardWidget(status: status),
             ),
           ],
