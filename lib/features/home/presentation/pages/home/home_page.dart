@@ -18,7 +18,6 @@ import 'package:my_flutter_template/injector_container.dart';
 import 'package:my_flutter_template/router/app_routes.dart';
 import 'package:my_flutter_template/router/name_routes.dart';
 import 'package:my_flutter_template/features/rewards/rewards_api.dart';
-import 'package:my_flutter_template/features/rewards/rewards_texts.dart';
 
 /// Bosh sahifa ranglari
 const Color _kInk = Color(0xFF0F172A);
@@ -304,7 +303,6 @@ class _HomePageState extends State<HomePage> {
                     ],
                   ),
                 ),
-                _golChip(locale),
                 const SizedBox(width: 8),
                 _bellButton(locale),
                 const SizedBox(width: 8),
@@ -410,85 +408,67 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Ism ostidagi "Tarif sotib olish" tugmasi — to'lov oynasiga to'g'ridan-to'g'ri kirish
+  /// Tarif sotib olingan bo'lsa — tarif nomi va qolgan kunlar, aks holda "Tarif sotib olish".
   Widget _buyPlanButton(String locale) {
-    // O'ngdagi chiplar (gol, qo'ng'iroq, til) joy egallaganda ustun torayadi —
-    // shunda qisqa yozuv ko'rsatiladi, baribir sig'masa ellipsis bilan qisqaradi.
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 140;
-        final label = locale == 'ru'
-            ? (compact ? 'Тариф' : 'Купить тариф')
-            : (compact ? 'Tarif' : 'Tarif sotib olish');
-        return _buyPlanButtonBody(label);
-      },
-    );
-  }
-
-  Widget _buyPlanButtonBody(String label) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        Navigator.of(mainRootNavigatorKey.currentContext!).push(
-          MaterialPageRoute(builder: (_) => const TarifRejasiScreen()),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFFFFB020), Color(0xFFFF7A00)]),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFFF7A00).withOpacity(0.25),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.workspace_premium_rounded, size: 15, color: Colors.white),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
-              ),
-            ),
-          ],
-        ),
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        TariffService.isPaid,
+        TariffService.isPro,
+        TariffService.daysLeft,
+        TariffService.tariffName,
+      ]),
+      builder: (context, _) => LayoutBuilder(
+        // Juda tor ekranda qisqa yozuv, baribir sig'masa ellipsis bilan qisqaradi.
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 150;
+          final String label;
+          if (TariffService.isPaid.value == true) {
+            final rawName = TariffService.tariffName.value.trim();
+            final name = rawName.isNotEmpty
+                ? rawName
+                : (TariffService.isPro.value == true ? 'Start Pro' : 'Start');
+            final days = TariffService.daysLeft.value;
+            label = compact || days <= 0
+                ? name
+                : '$name · $days ${locale == 'ru' ? 'дн.' : 'kun'}';
+          } else {
+            label = locale == 'ru'
+                ? (compact ? 'Тариф' : 'Купить тариф')
+                : (compact ? 'Tarif' : 'Tarif sotib olish');
+          }
+          return _buyPlanButtonBody(label);
+        },
       ),
     );
   }
 
-  /// ⚽ N gol — jami gol (kundalik kirish + haftalik testlar). Bosilganda Tarix ochiladi.
-  Widget _golChip(String locale) {
-    // Ligaga qo'shilmaganlarga gol ko'rsatilmaydi
-    return ValueListenableBuilder<bool>(
-      valueListenable: GolStore.ligaJoined,
-      builder: (context, joined, chip) =>
-          joined ? Padding(padding: const EdgeInsets.only(left: 8), child: chip) : const SizedBox.shrink(),
-      child: ValueListenableBuilder<int?>(
-      valueListenable: GolStore.total,
-      builder: (context, gol, _) => GestureDetector(
+  Widget _buyPlanButtonBody(String label) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
         onTap: () {
           HapticFeedback.lightImpact();
-          Navigator.pushNamed(mainRootNavigatorKey.currentContext!, Routes.walletHistory);
+          Navigator.of(mainRootNavigatorKey.currentContext!).push(
+            MaterialPageRoute(builder: (_) => const TarifRejasiScreen()),
+          );
         },
-        child: Container(
-          height: 44,
-          padding: const EdgeInsets.only(left: 5, right: 11),
+        child: Ink(
+          height: 34,
+          padding: const EdgeInsets.only(left: 4, right: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFFFC233), Color(0xFFFF8A00), Color(0xFFFF6A00)],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white.withOpacity(0.6), width: 1),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0E1A4C).withOpacity(0.06),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
+                color: const Color(0xFFFF7A00).withOpacity(0.35),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -496,22 +476,34 @@ class _HomePageState extends State<HomePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 34,
-                height: 34,
-                decoration: const BoxDecoration(color: Color(0xFFE3EDFF), shape: BoxShape.circle),
-                child: const Icon(Icons.sports_soccer_rounded, size: 22, color: Color(0xFF0B1B3F)),
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.28),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.workspace_premium_rounded, size: 17, color: Colors.white),
               ),
               const SizedBox(width: 6),
-              Text(
-                gol == null ? '…' : '$gol',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _kInk),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.1,
+                    shadows: [Shadow(color: Color(0x33000000), blurRadius: 2, offset: Offset(0, 1))],
+                  ),
+                ),
               ),
-              const SizedBox(width: 3),
-              Text(rt(locale, 'gol'), style: const TextStyle(fontSize: 12, color: _kMuted)),
+              const SizedBox(width: 2),
+              const Icon(Icons.chevron_right_rounded, size: 18, color: Colors.white),
             ],
           ),
         ),
-      ),
       ),
     );
   }

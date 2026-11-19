@@ -1,9 +1,9 @@
 class Constants {
   static const String authUrl = "https://api.iqmath.uz/api/v1";
   static const String baseUrl = "https://api.iqmath.uz/api/v1";
-  static const String iosUrl =
-      "https://apps.apple.com/uz/app/slash/id6447563629";
-  static const String androidUrl = "market://details?id=uz.slash";
+  static const String iosUrl = "https://apps.apple.com/app/id6753702778";
+  static const String androidUrl =
+      "https://play.google.com/store/apps/details?id=com.iqmath.mobile";
   static const String appMetricaKey = "28b33c0b-d306-4202-9b90-64c2d2a0b49b";
 
   // Battle (1v1 matematik duel) — WebSocket manzili. Xona ID va tokenni

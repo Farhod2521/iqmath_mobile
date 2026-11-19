@@ -17,7 +17,8 @@ const String _navImgHome = 'assets/images/navbar1.png';
 const String _navImgCourses = 'assets/images/navbar2.png';
 const String _navImgDiagnostics = 'assets/images/navbar3.png';
 const String _navImgBattle = 'assets/images/navbar4.png';
-const String _navImgLiga = 'assets/images/navbar_liga.png';
+// Bo'sh chetlari kesilgan versiya — kubok va barglar to'liq, kattaroq ko'rinadi
+const String _navImgLiga = 'assets/images/navbar_liga_fit.png';
 
 class CustomBottomAppBar extends StatefulWidget {
   final List<Destination> destinations;
@@ -49,6 +50,12 @@ class _CustomBottomAppBarState extends State<CustomBottomAppBar> {
     final bool isIOS = Platform.isIOS;
     final additionalPadding = isIOS ? 0.0 : bottomPadding;
 
+    // Qisqa yozuvlar — pastki menyuda to'liq sig'ishi uchun
+    final isRu = context.read<AppBloc>().state.appLocale == 'ru';
+    final homeTitle = isRu ? 'Главная' : 'Asosiy';
+    final coursesTitle = isRu ? 'Курсы' : widget.destinations[1].title;
+    final testTitle = isRu ? 'Тест' : 'Test';
+
     return BlocBuilder<MainBloc, MainState>(
       builder: (context, state) {
         return Container(
@@ -64,7 +71,7 @@ class _CustomBottomAppBarState extends State<CustomBottomAppBar> {
                 children: [
                   BottomAppItem(
                     imageAsset: _navImgHome,
-                    title: widget.destinations.first.title,
+                    title: homeTitle,
                     isSelected: state.currentPage.isHome,
                     itemIndex: 0,
                     onLongPress: () {
@@ -86,7 +93,7 @@ class _CustomBottomAppBarState extends State<CustomBottomAppBar> {
                   ),
                   BottomAppItem(
                     imageAsset: _navImgCourses,
-                    title: widget.destinations[1].title,
+                    title: coursesTitle,
                     isSelected: state.currentPage.isSubject,
                     itemIndex: 1,
                     onTap: () {
@@ -103,7 +110,7 @@ class _CustomBottomAppBarState extends State<CustomBottomAppBar> {
                   ),
                   BottomAppItem(
                     imageAsset: _navImgDiagnostics,
-                    title: widget.destinations[2].title,
+                    title: testTitle,
                     isSelected: state.currentPage.isDiagnostics,
                     itemIndex: 2,
                     onTap: () {
@@ -121,6 +128,7 @@ class _CustomBottomAppBarState extends State<CustomBottomAppBar> {
                   // Matematik Liga — saytdagi /dashboard/student/liga (alohida sahifa sifatida ochiladi)
                   BottomAppItem(
                     imageAsset: _navImgLiga,
+                    iconWidth: 50,
                     title: context.read<AppBloc>().state.appLocale == 'ru' ? 'Лига' : 'Liga',
                     isSelected: false,
                     itemIndex: 3,
@@ -163,6 +171,9 @@ class BottomAppItem extends StatelessWidget {
   final VoidCallback? onLongPress;
   final String imageAsset;
   final double iconSize;
+
+  /// Keng rasmlar uchun (masalan, Liga kubogi barglari bilan); berilmasa — kvadrat
+  final double? iconWidth;
   final int itemIndex;
 
   const BottomAppItem({
@@ -174,6 +185,7 @@ class BottomAppItem extends StatelessWidget {
     required this.imageAsset,
     this.onLongPress,
     this.iconSize = 32,
+    this.iconWidth,
   });
 
   @override
@@ -215,7 +227,8 @@ class BottomAppItem extends StatelessWidget {
                   Image.asset(
                     imageAsset,
                     height: iconSize,
-                    width: iconSize,
+                    width: iconWidth ?? iconSize,
+                    fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 3),
                   Text(

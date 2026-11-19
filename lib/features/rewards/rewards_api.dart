@@ -97,6 +97,13 @@ class TariffService {
   static final ValueNotifier<bool?> isPro = ValueNotifier<bool?>(null);
   static final ValueNotifier<String> tariffName = ValueNotifier<String>('');
 
+  /// To'lov holati: `null` — yuklanmagan, true — tarif sotib olingan (to'langan),
+  /// false — sotib olinmagan (sinov muddati yoki muddati tugagan).
+  static final ValueNotifier<bool?> isPaid = ValueNotifier<bool?>(null);
+
+  /// Keyingi to'lovgacha (yoki sinov tugashigacha) qolgan kunlar
+  static final ValueNotifier<int> daysLeft = ValueNotifier<int>(0);
+
   static bool get isStudent => (sl<LocalSource>().getUserRole() ?? 'student') == 'student';
 
   static Future<void> load({String locale = 'uz'}) async {
@@ -105,12 +112,14 @@ class TariffService {
       final sub = await RewardsApi.subscription();
       final tariff = sub['tariff'] is Map ? asMap(sub['tariff']) : null;
       final trial = sub['trial_tariff'] is Map ? asMap(sub['trial_tariff']) : null;
-      final daysLeft = asInt(sub['days_until_next_payment']);
-      final active = sub['is_paid'] == true || daysLeft > 0;
+      final days = asInt(sub['days_until_next_payment']);
+      final active = sub['is_paid'] == true || days > 0;
       isPro.value = active && (tariff != null ? tariff['is_pro'] == true : trial != null ? trial['is_pro'] == true : true);
       tariffName.value = tariff != null
           ? '${(locale == 'ru' ? tariff['name_ru'] : tariff['name_uz']) ?? tariff['name'] ?? ''}'
           : '${trial?['name'] ?? ''}';
+      daysLeft.value = days < 0 ? 0 : days;
+      isPaid.value = sub['is_paid'] == true;
     } catch (_) {
       // Tarmoq xatosi: oldingi qiymat saqlanadi
     }
