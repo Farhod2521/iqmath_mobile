@@ -30,11 +30,9 @@ class Routes {
   static const diagnostics = '/diagnostics';
   static const products = '/products';
   static const subjectDetail = '/subject_detail';
-  static const suggestions = '/suggestions';
   static const questions = '/questions';
   static const settings= '/settings';
   static const personal='/personal';
-  static const diagnosticHistory='/diagnostic_history';
   static const changePassword='/change_password';
   static const telegramBot='/telegram_bot';
   static const ballCoins='/ball_coins';

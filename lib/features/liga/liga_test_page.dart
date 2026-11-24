@@ -225,7 +225,7 @@ class _LigaTestPageState extends State<LigaTestPage> {
       child: Scaffold(
         backgroundColor: LigaColors.bg,
         body: SafeArea(
-          child: LigaWatermark(viewer: attempt?['viewer'] as String?, child: body),
+          child: body,
         ),
       ),
     );

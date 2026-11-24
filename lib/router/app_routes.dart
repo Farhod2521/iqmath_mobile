@@ -36,7 +36,6 @@ import 'package:my_flutter_template/features/liga/liga_history_page.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/change_password_page.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/chat_page.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/coupons_page.dart';
-import 'package:my_flutter_template/features/profile/presentation/pages/diagnostic_history_page.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/edit_profile_page.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/profile_page.dart';
 import 'package:my_flutter_template/features/profile/presentation/pages/security_page.dart';
@@ -45,7 +44,6 @@ import 'package:my_flutter_template/features/screen_lock/presentation/pages/scre
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:my_flutter_template/features/subject/presentation/bloc/subject_bloc/subject_bloc.dart';
-import 'package:my_flutter_template/features/suggestion/presentation/pages/suggestion_page.dart';
 
 import '../features/auth/domain/usecases/register_usecase.dart';
 import '../features/auth/presentation/page_args/auth_args.dart';
@@ -236,7 +234,6 @@ class AppRoutes {
                   HomeRoutes.onGenerateRoute,
                   SubjectRoutes.onGenerateRoute,
                   Diagnostics.onGenerateRoute,
-                  Suggestions.onGenerateRoute,
                   ProfileRoutes.onGenerateRoute,
                 ],
               ),
@@ -354,10 +351,6 @@ class AppRoutes {
         Routes.settings => CupertinoPageRoute(
             settings: settings,
             builder: (_) => const SettingsPage(),
-          ),
-        Routes.diagnosticHistory => CupertinoPageRoute(
-            settings: settings,
-            builder: (_) => const DiagnosticHistoryPage(),
           ),
         Routes.telegramBot => CupertinoPageRoute(
             settings: settings,
@@ -561,17 +554,6 @@ class Diagnostics {
       };
 }
 
-class Suggestions {
-  static Route<dynamic>? onGenerateRoute(RouteSettings settings) =>
-      switch (settings.name) {
-        Routes.suggestions => CupertinoPageRoute(
-            settings: settings,
-            builder: (_) => const SuggestionPage(),
-          ),
-        _ => null,
-      };
-}
-
 class Products {
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) =>
       switch (settings.name) {
@@ -596,10 +578,6 @@ class ProfileRoutes {
         Routes.products => CupertinoPageRoute(
             settings: settings,
             builder: (_) => const ProductsPage(),
-          ),
-        Routes.diagnosticHistory => CupertinoPageRoute(
-            settings: settings,
-            builder: (_) => const DiagnosticHistoryPage(),
           ),
         _ => null,
       };

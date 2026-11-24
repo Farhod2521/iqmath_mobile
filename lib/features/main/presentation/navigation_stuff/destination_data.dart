@@ -43,20 +43,9 @@ List<Destination> allDestinations(AppLocalization localization) =>
         selectedIcon: Assets.pngWalletRounded,
         initialRoute: Routes.diagnostics,
       ),
-      Destination(
-        index: 3,
-        title: 'Battle',
-        icon: Assets.svgSuggestion,
-        selectedIcon: Assets.pngUser,
-        initialRoute: Routes.suggestions,
-      ),
-      Destination(
-        index: 4,
-        title: 'Ko\'proq',
-        icon: Assets.svgMenuBottom,
-        selectedIcon: Assets.pngUser,
-        initialRoute: Routes.profile,
-      ),
+      // Liga va Battle alohida sahifa bo'lib ochiladi, profil — drawer.
+      // Eski "Diagnostika tarixi" (Routes.suggestions) tabi olib tashlandi:
+      // PageView'da surib yoki AI banner orqali ochilib qolardi.
     ];
 
 // List<Destination> allDestinations(AppLocalization localization) =>

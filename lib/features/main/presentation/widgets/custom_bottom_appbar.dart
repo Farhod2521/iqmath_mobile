@@ -141,7 +141,7 @@ class _CustomBottomAppBarState extends State<CustomBottomAppBar> {
                   ),
                   BottomAppItem(
                     imageAsset: _navImgBattle,
-                    title: widget.destinations[3].title,
+                    title: 'Battle',
                     isSelected: false,
                     itemIndex: 3,
                     onTap: () {

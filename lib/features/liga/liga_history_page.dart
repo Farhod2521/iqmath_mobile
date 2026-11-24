@@ -104,7 +104,7 @@ class _LigaHistoryPageState extends State<LigaHistoryPage> {
       backgroundColor: LigaColors.bg,
       body: SafeArea(
         bottom: false,
-        child: _data?['viewer'] != null ? LigaWatermark(viewer: '${_data!['viewer']}', child: body) : body,
+        child: body,
       ),
     );
   }

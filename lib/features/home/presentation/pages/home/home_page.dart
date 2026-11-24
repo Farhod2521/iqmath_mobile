@@ -33,9 +33,6 @@ const Color _kBgBottom = Color(0xFFF7FAFE);
 const String _imgCourses = 'assets/images/1.png'; // kitoblar + bitiruv shapkasi
 const String _imgDiagnostics = 'assets/images/2.png'; // planshet + belgilar
 const String _imgAlgebra = 'assets/images/3.png'; // kitoblar + x²
-const String _imgDailyTest = 'assets/images/5.png'; // nishon + o'q
-const String _imgQuickTest = 'assets/images/6.png'; // kub
-const String _imgRating = 'assets/images/7.png'; // kubok
 const String _imgBattle = 'assets/images/4.png'; // battle uchun
 const String _imgWelcome = 'assets/images/homepage.png'; // salomlashuv foni
 const String _imgAiBackground =
@@ -153,13 +150,6 @@ class _HomePageState extends State<HomePage> {
       'premiumTitle': 'AI yordamchi',
       'premiumSubtitle': "Matematikani mukammal o'rganing! Tez kunda",
       'premiumButton': 'Batafsil',
-      'sectionTitle': "O'zingizni sinab ko'ring",
-      'dailyTest': 'Kunlik test',
-      'dailyTestSub': 'Har kuni yangi savollar',
-      'quickTest': 'Tezkor savollar',
-      'quickTestSub': 'Tezkor bilim sinovi',
-      'rating': 'Reyting',
-      'ratingSub': "O'z natijalaringizni kuzating",
     };
 
     const ru = {
@@ -179,13 +169,6 @@ class _HomePageState extends State<HomePage> {
       'premiumTitle': 'AI помощник',
       'premiumSubtitle': 'Изучайте математику идеально! Уже скоро',
       'premiumButton': 'Подробнее',
-      'sectionTitle': 'Проверьте себя',
-      'dailyTest': 'Тест дня',
-      'dailyTestSub': 'Каждый день новые вопросы',
-      'quickTest': 'Быстрые вопросы',
-      'quickTestSub': 'Быстрая проверка знаний',
-      'rating': 'Рейтинг',
-      'ratingSub': 'Следите за своими результатами',
     };
 
     final map = locale == 'ru' ? ru : uz;
@@ -230,14 +213,10 @@ class _HomePageState extends State<HomePage> {
                           _buildSecondaryCards(locale),
                           const SizedBox(height: 20),
                           _buildAiBanner(locale),
-                          const SizedBox(height: 24),
-                          _buildSectionHeader(_t(locale, 'sectionTitle')),
-                          const SizedBox(height: 14),
                         ],
                       ),
                     ),
                   ),
-                  SliverToBoxAdapter(child: _buildChallengeCards(locale)),
                   const SliverToBoxAdapter(child: SizedBox(height: 120)),
                 ],
               ),
@@ -1049,7 +1028,8 @@ class _HomePageState extends State<HomePage> {
   // ---------------------------------------------------------------------------
   Widget _buildAiBanner(String locale) {
     return GestureDetector(
-      onTap: () => _switchMainPage(MainPages.products),
+      // AI yordamchi hali tayyor emas ("Tez kunda")
+      onTap: _showComingSoon,
       child: Container(
         // Vertikal jihatdan ixchamlashtirildi; rasm butun kenglikni egallaydi
         height: 148,
@@ -1175,135 +1155,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title.toUpperCase(),
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w800,
-        color: Color(0xFF94A3B8),
-        letterSpacing: 1.2,
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // "O'zingizni sinab ko'ring" — gorizontal kartalar
-  // ---------------------------------------------------------------------------
-  Widget _buildChallengeCards(String locale) {
-    final items = <_ChallengeItem>[
-      _ChallengeItem(
-        title: _t(locale, 'dailyTest'),
-        subtitle: _t(locale, 'dailyTestSub'),
-        image: _imgDailyTest,
-        fallbackIcon: Icons.track_changes_rounded,
-        background: const Color(0xFFEDE7FE),
-        accent: const Color(0xFF7C5CFB),
-      ),
-      _ChallengeItem(
-        title: _t(locale, 'quickTest'),
-        subtitle: _t(locale, 'quickTestSub'),
-        image: _imgQuickTest,
-        fallbackIcon: Icons.view_in_ar_rounded,
-        background: const Color(0xFFDCEAFE),
-        accent: _kPrimary,
-      ),
-      _ChallengeItem(
-        title: _t(locale, 'rating'),
-        subtitle: _t(locale, 'ratingSub'),
-        image: _imgRating,
-        fallbackIcon: Icons.emoji_events_rounded,
-        background: const Color(0xFFFEF0CE),
-        accent: const Color(0xFFE9A319),
-      ),
-    ];
-
-    return SizedBox(
-      height: 232,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) => _challengeCard(items[index]),
-      ),
-    );
-  }
-
-  Widget _challengeCard(_ChallengeItem item) {
-    return GestureDetector(
-      onTap: _showComingSoon,
-      child: Container(
-        width: 168,
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-        decoration: BoxDecoration(
-          color: item.background,
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Center(
-                child: _illustration(
-                  item.image,
-                  item.fallbackIcon,
-                  size: 92,
-                  fallbackColor: item.accent,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              item.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: _kInk,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Text(
-                    item.subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w400,
-                      color: _kMuted,
-                      height: 1.3,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: item.accent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.arrow_forward_rounded,
-                    size: 18,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// PNG illyustratsiya; fayl hali qo'shilmagan bo'lsa — ikonka bilan almashadi.
   Widget _illustration(
     String asset,
@@ -1333,20 +1184,3 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _ChallengeItem {
-  final String title;
-  final String subtitle;
-  final String image;
-  final IconData fallbackIcon;
-  final Color background;
-  final Color accent;
-
-  const _ChallengeItem({
-    required this.title,
-    required this.subtitle,
-    required this.image,
-    required this.fallbackIcon,
-    required this.background,
-    required this.accent,
-  });
-}

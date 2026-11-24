@@ -104,7 +104,7 @@ class _LigaSeasonsPageState extends State<LigaSeasonsPage> {
       backgroundColor: LigaColors.bg,
       body: SafeArea(
         bottom: false,
-        child: result?['viewer'] != null ? LigaWatermark(viewer: '${result!['viewer']}', child: body) : body,
+        child: body,
       ),
     );
   }
